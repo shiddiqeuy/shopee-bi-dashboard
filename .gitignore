@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+*.spec
+
+# Virtual environment
+.venv/
+venv/
+env/
+envs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# DuckDB database
+output/*.duckdb
+output/*.duckdb.wal
+output/*.xlsx
+
+# Logs
+logs/*.log
+logs/*.jsonl
+
+# Input files (contains business data)
+input/*.xlsx
+input/*.xls
+input/*.csv
+!input/.gitkeep
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+
+# pytest
+.pytest_cache/
