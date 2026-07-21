@@ -1,7 +1,6 @@
 """
-Dashboard page — KPI cards, charts, and insights.
-
-This is the main analytics view of the application.
+Dashboard page — KPI cards, charts, insights, and customer table.
+Mobile-responsive with stacked layout on small screens.
 """
 
 from __future__ import annotations
@@ -19,13 +18,48 @@ from streamlit_app.components.chart_card import chart_card
 from streamlit_app.components.data_table import data_table
 from streamlit_app.components.metric_card import metric_card
 
+# ── Responsive CSS ──────────────────────────────────────────────────────
+_RESPONSIVE_CSS = """
+<style>
+    /* KPI grid: 3 cols desktop, 2 cols tablet, 1 col mobile */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.75rem;
+    }
+    @media (max-width: 900px) {
+        .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 500px) {
+        .kpi-grid { grid-template-columns: 1fr; }
+    }
+    /* chart containers stack full-width on small screens */
+    .chart-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+    @media (max-width: 768px) {
+        .chart-grid { grid-template-columns: 1fr; }
+    }
+    /* responsive tables */
+    .dataframe { font-size: 0.85rem; }
+    @media (max-width: 600px) {
+        .dataframe { font-size: 0.7rem; }
+        .dataframe th, .dataframe td { padding: 4px 6px !important; }
+        .stTabs [data-baseweb="tab-list"] { gap: 4px; }
+        .stTabs [data-baseweb="tab"] { font-size: 0.75rem; padding: 4px 8px; }
+    }
+</style>
+"""
+
 
 def _get_repo() -> DuckDBRepository:
     return DuckDBRepository(get_connection())
 
 
+@st.cache_data(ttl=300)
 def _load_analytics() -> Optional[dict[str, Any]]:
-    """Compute and cache analytics results."""
     repo = _get_repo()
     if not repo.table_exists("fact_sales"):
         return None
@@ -45,22 +79,21 @@ def _format_rp(value: float) -> str:
 
 def _render_kpis(analytics: dict[str, Any]) -> None:
     cust = analytics.get("customer", {})
-    prod = analytics.get("product", {})
     cancel = analytics.get("cancellation", {})
 
     kpi_data = [
-        ("Total Revenue", _format_rp(cust.get("total_revenue", 0)), "Revenue from all completed orders"),
+        ("Total Revenue", _format_rp(cust.get("total_revenue", 0)), "Revenue from completed orders"),
         ("Total Orders", f"{cancel.get('total_orders', 0):,}", "All orders including cancelled"),
         ("Total Customers", f"{cust.get('total_customers', 0):,}", "Unique buyers"),
-        ("Avg Order Value", _format_rp(cust.get("avg_basket", 0)), "Revenue ÷ orders"),
+        ("Avg Order Value", _format_rp(cust.get("avg_basket", 0)), "Revenue / orders"),
         ("Repeat Rate", f"{cust.get('repeat_rate', 0):.1f}%", "Customers with 2+ orders"),
         ("Cancellation", f"{cancel.get('cancellation_rate', 0):.1f}%", "Orders cancelled"),
     ]
 
-    cols = st.columns(6)
-    for col, (label, value, help_text) in zip(cols, kpi_data):
-        with col:
-            metric_card(label, value, help_text=help_text)
+    st.markdown('<div class="kpi-grid">', unsafe_allow_html=True)
+    for label, value, help_text in kpi_data:
+        metric_card(label, value, help_text=help_text)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def _render_insights(analytics: dict[str, Any]) -> None:
@@ -96,6 +129,53 @@ def _render_insights(analytics: dict[str, Any]) -> None:
             st.markdown(ins.get("description", ""))
 
 
+def _render_top_customers(repo: DuckDBRepository) -> None:
+    """Table: customer name, revenue, total orders, reorder products."""
+    if not repo.table_exists("orders"):
+        return
+
+    sql = """
+        SELECT
+            buyer_name,
+            COUNT(DISTINCT order_id) AS total_orders,
+            SUM(total_amount) AS total_revenue,
+            (
+                SELECT COUNT(*)
+                FROM (
+                    SELECT o2.product_name
+                    FROM orders o2
+                    WHERE o2.buyer_username = o.buyer_username
+                      AND o2.order_status != 'cancelled'
+                    GROUP BY o2.product_name
+                    HAVING COUNT(DISTINCT o2.order_id) > 1
+                )
+            ) AS reorder_products
+        FROM orders o
+        WHERE order_status != 'cancelled'
+        GROUP BY buyer_name, buyer_username
+        ORDER BY total_revenue DESC
+        LIMIT 20
+    """
+    raw = repo.query(sql)
+    if not raw:
+        return
+
+    df = pl.DataFrame(raw).with_columns(
+        pl.col("total_revenue").cast(pl.Float64).alias("revenue_f64"),
+        pl.col("reorder_products").cast(pl.Int64).alias("reorder_f64"),
+    )
+
+    st.markdown("### 🏆 Top Customers")
+    st.markdown(
+        "<p style='color:#64748b; font-size:0.85rem;'>"
+        "Highest revenue customers, with reorder count (products ordered more than once)."
+        "</p>",
+        unsafe_allow_html=True,
+    )
+
+    data_table(df, height=400)
+
+
 def _render_revenue_trend(analytics: dict[str, Any]) -> None:
     months = analytics.get("trend", {}).get("months", [])
     if not months:
@@ -111,7 +191,7 @@ def _render_revenue_trend(analytics: dict[str, Any]) -> None:
             y=alt.Y("revenue_f64:Q", title="Revenue", axis=alt.Axis(format="~s")),
             tooltip=["month", alt.Tooltip("revenue_f64", format=",.0f")],
         )
-        .properties(height=300)
+        .properties(height=280)
     )
     chart_card("Revenue Trend", chart)
 
@@ -149,7 +229,7 @@ def _render_top_products(analytics: dict[str, Any]) -> None:
             x=alt.X("revenue_f64:Q", title="Revenue", axis=alt.Axis(format="~s")),
             tooltip=["product_name", alt.Tooltip("revenue_f64", format=",.0f")],
         )
-        .properties(height=300)
+        .properties(height=280)
     )
     chart_card("Top Products by Revenue", chart)
 
@@ -189,7 +269,7 @@ def _render_city_performance(analytics: dict[str, Any]) -> None:
             x=alt.X("revenue_f64:Q", title="Revenue", axis=alt.Axis(format="~s")),
             tooltip=["city_name", alt.Tooltip("revenue_f64", format=",.0f")],
         )
-        .properties(height=300)
+        .properties(height=280)
     )
     chart_card("City Performance", chart)
 
@@ -215,7 +295,7 @@ def _render_customer_segments(analytics: dict[str, Any]) -> None:
             ),
             tooltip=["segment", "count"],
         )
-        .properties(height=300)
+        .properties(height=280)
     )
     chart_card("Customer Segmentation", chart)
 
@@ -251,12 +331,13 @@ def _render_payment_analysis(analytics: dict[str, Any]) -> None:
             color=alt.Color("payment_method:N", legend=alt.Legend(orient="bottom", title=None)),
             tooltip=["payment_method", alt.Tooltip("revenue", format=",.0f")],
         )
-        .properties(height=300)
+        .properties(height=280)
     )
     chart_card("Payment Method Distribution", chart)
 
 
 def render() -> None:
+    st.markdown(_RESPONSIVE_CSS, unsafe_allow_html=True)
     st.title("Dashboard")
 
     repo = _get_repo()
@@ -276,28 +357,30 @@ def render() -> None:
 
     st.divider()
 
-    # ── Charts Top Row ──
+    # ── Top Customers Table ──
+    _render_top_customers(repo)
+
+    st.divider()
+
+    # ── Charts (stacked full-width on mobile) ──
     col1, col2 = st.columns(2)
     with col1:
         _render_revenue_trend(analytics)
     with col2:
         _render_monthly_orders(analytics)
 
-    # ── Charts Middle Row ──
     col1, col2 = st.columns(2)
     with col1:
         _render_top_products(analytics)
     with col2:
         _render_customer_segments(analytics)
 
-    # ── Charts Bottom Row ──
     col1, col2 = st.columns(2)
     with col1:
         _render_province_performance(analytics)
     with col2:
         _render_city_performance(analytics)
 
-    # ── Charts Bottom Row 2 ──
     col1, col2 = st.columns(2)
     with col1:
         _render_shipping_analysis(analytics)
@@ -309,7 +392,7 @@ def render() -> None:
     # ── Insights ──
     _render_insights(analytics)
 
-    # ── Raw data button ──
+    # ── Raw data ──
     with st.expander("View raw data"):
         raw = repo.query("SELECT * FROM orders ORDER BY order_date DESC LIMIT 100")
         data_table(raw, height=300)
