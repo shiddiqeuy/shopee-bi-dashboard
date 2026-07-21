@@ -34,7 +34,7 @@ python -m streamlit run streamlit_app/app.py
 ```
 
 Web-based interactive dashboard with:
-- **Dashboard** — KPIs, 8 Altair chart panels, business insights
+- **Dashboard** — KPI grid, Top Customers table (name + revenue + orders + reorder count), 8 Altair chart panels (mobile-responsive), business insights
 - **Upload** — Upload files via browser (saved to `input/`), preview columns, column validation, run ETL with live progress, manage existing files (list, run/re-run ETL, delete)
 - **Reports** — Generate and download the Excel dashboard
 - **Settings** — System info, analytics parameters, data management
