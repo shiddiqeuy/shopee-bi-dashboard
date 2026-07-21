@@ -206,33 +206,53 @@ def _render_top_customers(repo: DuckDBRepository) -> None:
 
 
 def _render_city_map(analytics: dict[str, Any]) -> None:
-    """Interactive map of city performance."""
+    """Interactive folium map of city performance."""
     cities = analytics.get("city", {}).get("cities", [])
     if not cities:
         return
-    rows = []
+    import folium
+    from streamlit_folium import st_folium
+
+    center_lat, center_lon = -2.5, 118.0
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=5, control_scale=True,
+                   tiles="CartoDB positron", width="100%", height=500)
+
+    max_rev = max(float(c["revenue"]) for c in cities if c["city_name"] in CITY_COORDS) if cities else 1
+    min_radius, max_radius = 8, 40
+
     for c in cities:
         coords = CITY_COORDS.get(c["city_name"])
-        if coords:
-            rows.append({
-                "lat": coords[0],
-                "lon": coords[1],
-                "city": c["city_name"],
-                "revenue": float(c["revenue"]),
-                "orders": int(c["order_count"]),
-                "customers": int(c["customer_count"]),
-            })
-    if not rows:
-        return
-    import pandas as pd
-    df = pd.DataFrame(rows)
+        if not coords:
+            continue
+        rev = float(c["revenue"])
+        radius = min_radius + (rev / max_rev) * (max_radius - min_radius)
+        orders = int(c["order_count"])
+        customers = int(c["customer_count"])
+
+        popup_html = f"""
+        <b>{c['city_name']}</b><br>
+        Revenue: Rp {rev:,.0f}<br>
+        Orders: {orders:,}<br>
+        Customers: {customers:,}
+        """
+        folium.CircleMarker(
+            location=[coords[0], coords[1]],
+            radius=radius,
+            popup=folium.Popup(popup_html, max_width=300),
+            tooltip=c["city_name"],
+            color="#1B98F5",
+            fill=True,
+            fill_color="#1B98F5",
+            fill_opacity=0.7,
+        ).add_to(m)
+
     with st.container(border=True):
         st.markdown(
             "<p style='color:#1e293b; font-size:0.95rem; font-weight:600; margin-bottom:8px;'>🗺️ City Distribution Map</p>",
             unsafe_allow_html=True,
         )
-        st.map(df, latitude="lat", longitude="lon", size="revenue", use_container_width=True)
-        st.caption("Circle size = revenue • Hover for details")
+        st_folium(m, width="100%", height=500, returned_objects=[])
+        st.caption("Circle size = revenue • Click marker for details")
 
 
 def _render_revenue_trend(analytics: dict[str, Any]) -> None:
