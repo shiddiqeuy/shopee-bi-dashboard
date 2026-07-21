@@ -12,7 +12,7 @@ import altair as alt
 import polars as pl
 import streamlit as st
 
-from config.config import THEME
+from config.config import CITY_COORDS, THEME
 from database.connection import get_connection
 from database.repository import DuckDBRepository
 from streamlit_app.components.chart_card import chart_card
@@ -203,6 +203,36 @@ def _render_top_customers(repo: DuckDBRepository) -> None:
         hide_index=True,
         height=400,
     )
+
+
+def _render_city_map(analytics: dict[str, Any]) -> None:
+    """Interactive map of city performance."""
+    cities = analytics.get("city", {}).get("cities", [])
+    if not cities:
+        return
+    rows = []
+    for c in cities:
+        coords = CITY_COORDS.get(c["city_name"])
+        if coords:
+            rows.append({
+                "lat": coords[0],
+                "lon": coords[1],
+                "city": c["city_name"],
+                "revenue": c["revenue"],
+                "orders": c["order_count"],
+                "customers": c["customer_count"],
+            })
+    if not rows:
+        return
+    import pandas as pd
+    df = pd.DataFrame(rows)
+    with st.container(border=True):
+        st.markdown(
+            "<p style='color:#1e293b; font-size:0.95rem; font-weight:600; margin-bottom:8px;'>🗺️ City Distribution Map</p>",
+            unsafe_allow_html=True,
+        )
+        st.map(df, latitude="lat", longitude="lon", size="revenue", use_container_width=True)
+        st.caption("Circle size = revenue • Hover for details")
 
 
 def _render_revenue_trend(analytics: dict[str, Any]) -> None:
@@ -478,6 +508,11 @@ def render() -> None:
 
     # ── Top Customers ──
     _render_top_customers(repo)
+
+    st.divider()
+
+    # ── City Map ──
+    _render_city_map(analytics)
 
     st.divider()
 
