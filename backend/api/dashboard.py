@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse
 
 from config.config import DASHBOARD_OUTPUT
+from database.repository import DuckDBRepository
+from backend.deps import get_repo
 from streamlit_app.services.analytics_service import AnalyticsService
 from streamlit_app.services.dashboard_service import DashboardService
 
@@ -11,9 +13,7 @@ router = APIRouter()
 
 
 @router.get("/download")
-def download_dashboard(request: Request):
-    repo = request.app.state.repo
-
+def download_dashboard(repo: DuckDBRepository = Depends(get_repo)):
     analytics_service = AnalyticsService(repo)
     results = analytics_service.compute_all()
 

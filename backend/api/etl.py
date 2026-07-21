@@ -1,25 +1,19 @@
 from __future__ import annotations
 
-import json
-import shutil
-from pathlib import Path
+from fastapi import APIRouter, Depends, UploadFile, File
 
-from fastapi import APIRouter, Request, UploadFile, File
-
-from config.config import INPUT_DIR
+from database.repository import DuckDBRepository
+from backend.deps import get_repo
 from streamlit_app.services.etl_service import ETLService
 
 router = APIRouter()
 
 
 @router.post("/upload")
-async def upload_file(request: Request, file: UploadFile = File(...)):
-    repo = request.app.state.repo
+async def upload_file(file: UploadFile = File(...), repo: DuckDBRepository = Depends(get_repo)):
     service = ETLService(repo)
-
     contents = await file.read()
     saved_path = service.save_upload(contents, file.filename)
-
     result = service.run(str(saved_path))
     return {
         "filename": file.filename,
@@ -31,8 +25,7 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
 
 
 @router.get("/status")
-def etl_status(request: Request):
-    repo = request.app.state.repo
+def etl_status(repo: DuckDBRepository = Depends(get_repo)):
     try:
         count = repo.staging_count()
         return {"data_available": count > 0, "total_rows": count}
