@@ -218,9 +218,9 @@ def _render_city_map(analytics: dict[str, Any]) -> None:
                 "lat": coords[0],
                 "lon": coords[1],
                 "city": c["city_name"],
-                "revenue": c["revenue"],
-                "orders": c["order_count"],
-                "customers": c["customer_count"],
+                "revenue": float(c["revenue"]),
+                "orders": int(c["order_count"]),
+                "customers": int(c["customer_count"]),
             })
     if not rows:
         return
