@@ -1,33 +1,22 @@
-"""
-Settings page — configuration and system information.
-"""
+"""Settings page — configuration, system info, and data management."""
 
 from __future__ import annotations
-
-import os
-from pathlib import Path
 
 import streamlit as st
 
 from config.config import DB_PATH, INPUT_DIR, LOG_DIR, OUTPUT_DIR, ANALYTICS
+from streamlit_app.components.hero_header import HeroHeader
 
 
 def render() -> None:
-    st.markdown(
-        """
-    <div style="background:linear-gradient(135deg,#2563EB,#1D4ED8);border-radius:16px;padding:1.5rem 2rem;margin-bottom:1.5rem;">
-        <h1 style="color:white;font-size:1.4rem;font-weight:700;margin:0;">⚙️ Settings</h1>
-        <p style="color:rgba(255,255,255,0.6);font-size:0.85rem;margin:0.25rem 0 0;">
-            System configuration, data management, and analytics parameters.
-        </p>
-    </div>
-    """,
-        unsafe_allow_html=True,
-    )
+    HeroHeader(
+        title="⚙️ Settings",
+        subtitle="System configuration, data management, and analytics parameters.",
+    ).render()
 
     # ── System Info ────────────────────────────────────────────────────
     st.markdown(
-        "<h3 style='font-size:1rem;font-weight:600;color:var(--text);margin-bottom:0.75rem;'>System Information</h3>",
+        '<h3 class="section-header">System Information</h3>',
         unsafe_allow_html=True,
     )
 
@@ -44,49 +33,54 @@ def render() -> None:
         "Log Files": str(len(log_files)),
     }
 
-    st.markdown(
-        "<div style='background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1.5rem;'>",
-        unsafe_allow_html=True,
-    )
+    st.markdown('<div class="card" style="margin-bottom:1.5rem;">', unsafe_allow_html=True)
     for label, value in info.items():
         col1, col2 = st.columns([1, 3])
         with col1:
-            st.markdown(f"<span style='font-size:0.8rem;font-weight:500;color:var(--text-secondary);'>{label}</span>", unsafe_allow_html=True)
+            st.markdown(
+                f'<span style="font-size:0.8rem;font-weight:500;color:var(--text-secondary);">'
+                f"{label}</span>",
+                unsafe_allow_html=True,
+            )
         with col2:
-            st.markdown(f"<span style='font-size:0.8rem;color:var(--text);'>{value}</span>", unsafe_allow_html=True)
+            st.markdown(
+                f'<span style="font-size:0.8rem;color:var(--text);">{value}</span>',
+                unsafe_allow_html=True,
+            )
     st.markdown("</div>", unsafe_allow_html=True)
 
     # ── Analytics Params ───────────────────────────────────────────────
     st.markdown(
-        "<h3 style='font-size:1rem;font-weight:600;color:var(--text);margin:0 0 0.75rem;'>Analytics Parameters</h3>",
+        '<h3 class="section-header">Analytics Parameters</h3>',
         unsafe_allow_html=True,
     )
 
-    st.markdown(
-        "<div style='background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1.5rem;'>",
-        unsafe_allow_html=True,
-    )
+    st.markdown('<div class="card" style="margin-bottom:1.5rem;">', unsafe_allow_html=True)
     for key, value in ANALYTICS.items():
         col1, col2 = st.columns([1, 3])
         with col1:
-            st.markdown(f"<span style='font-size:0.8rem;font-weight:500;color:var(--text-secondary);'>{key}</span>", unsafe_allow_html=True)
+            st.markdown(
+                f'<span style="font-size:0.8rem;font-weight:500;color:var(--text-secondary);">'
+                f"{key}</span>",
+                unsafe_allow_html=True,
+            )
         with col2:
             if isinstance(value, dict):
                 st.json(value)
             else:
-                st.markdown(f"<span style='font-size:0.8rem;color:var(--text);'>{value}</span>", unsafe_allow_html=True)
+                st.markdown(
+                    f'<span style="font-size:0.8rem;color:var(--text);">{value}</span>',
+                    unsafe_allow_html=True,
+                )
     st.markdown("</div>", unsafe_allow_html=True)
 
     # ── Data Management ────────────────────────────────────────────────
     st.markdown(
-        "<h3 style='font-size:1rem;font-weight:600;color:var(--text);margin:0 0 0.75rem;'>Data Management</h3>",
+        '<h3 class="section-header">Data Management</h3>',
         unsafe_allow_html=True,
     )
 
-    st.markdown(
-        "<div style='background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem;'>",
-        unsafe_allow_html=True,
-    )
+    st.markdown('<div class="card">', unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("🗑️ Clear All Data", type="secondary", use_container_width=True):

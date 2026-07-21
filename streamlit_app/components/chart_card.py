@@ -1,29 +1,48 @@
-"""
-Chart card component — wraps an Altair chart with a title.
-"""
+"""ChartCard component — wraps any chart inside a consistent container."""
 
 from __future__ import annotations
 
 from typing import Any, Optional
 
+import streamlit as st
 
-def chart_card(title: str, chart: Any, height: int = 400) -> None:
-    """Render an Altair chart inside a bordered container.
 
-    Parameters
-    ----------
-    title:
-        Chart title displayed above the chart.
-    chart:
-        Altair chart object.
-    height:
-        Chart height in pixels.
+_DISPLAY_MODE_BAR = False
+
+
+class ChartCard:
+    """Chart container with title, optional helper text, and config.
+
+    Usage:
+        ChartCard("Revenue Trend", fig).render()
+        ChartCard("Revenue Trend", fig, help_text="Monthly revenue in IDR").render()
     """
-    import streamlit as st
 
-    with st.container(border=True):
+    def __init__(
+        self,
+        title: str,
+        fig: Any,
+        height: Optional[int] = None,
+        help_text: Optional[str] = None,
+    ) -> None:
+        self.title = title
+        self.fig = fig
+        self.height = height
+        self.help_text = help_text
+
+    def render(self) -> None:
         st.markdown(
-            f"<p style='color:#1e293b; font-size:0.95rem; font-weight:600; margin-bottom:8px;'>{title}</p>",
+            f"""
+        <div class="chart-container">
+            <p class="chart-title">{self.title}</p>
+        """,
             unsafe_allow_html=True,
         )
-        st.altair_chart(chart, use_container_width=True)
+        if self.help_text:
+            st.caption(self.help_text)
+        st.plotly_chart(
+            self.fig,
+            use_container_width=True,
+            config={"displayModeBar": _DISPLAY_MODE_BAR, "responsive": True},
+        )
+        st.markdown("</div>", unsafe_allow_html=True)

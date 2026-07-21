@@ -1,0 +1,623 @@
+/* ── Shopee BI Dashboard — Global Stylesheet ──────────────────────── */
+/* Loaded via st.markdown in app.py — single source of CSS truth      */
+/* Color tokens come from config.config.THEME via themes.py at runtime */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+* {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   LAYOUT
+   ═══════════════════════════════════════════════════════════════════ */
+.stApp {
+    background: var(--bg);
+}
+
+.main .block-container {
+    max-width: 1400px;
+    padding: 1.5rem 2rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SIDEBAR
+   ═══════════════════════════════════════════════════════════════════ */
+section[data-testid="stSidebar"] {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 0;
+}
+
+section[data-testid="stSidebar"] > div {
+    padding: 1rem 0.75rem;
+}
+
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0.5rem;
+}
+
+.sidebar-brand-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--primary), #7C3AED);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.sidebar-brand-text {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0;
+}
+
+.sidebar-brand-sub {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.nav-section {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.75rem 0.5rem 0.25rem;
+}
+
+section[data-testid="stSidebar"] div[data-testid="stButton"] button {
+    justify-content: flex-start;
+    text-align: left;
+    padding: 0.55rem 0.75rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    box-shadow: none !important;
+    font-size: 0.85rem;
+    font-weight: 500;
+    background: transparent;
+    color: var(--text-secondary);
+    transition: all 0.15s ease;
+}
+
+section[data-testid="stSidebar"] div[data-testid="stButton"] button:hover {
+    background: #F1F5F9;
+    color: var(--text);
+    border: none;
+}
+
+section[data-testid="stSidebar"] div[data-testid="stButton"] button[kind="primary"] {
+    background: #EFF6FF;
+    color: var(--primary);
+    font-weight: 600;
+}
+
+section[data-testid="stSidebar"] div[data-testid="stButton"] button[kind="secondary"] {
+    background: transparent;
+    color: var(--text-secondary);
+}
+
+.sidebar-status {
+    padding: 0.75rem 0.5rem;
+}
+
+.sidebar-status-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.25rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CARDS & CONTAINERS
+   ═══════════════════════════════════════════════════════════════════ */
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    box-shadow: var(--shadow);
+}
+
+.card-sm {
+    border-radius: var(--radius-sm);
+    padding: 0.75rem;
+}
+
+.card-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 0.5rem;
+}
+
+/* ── KPI Metric Card ── */
+.metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.1rem;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+}
+
+.metric-card-accent {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    border-radius: 3px 0 0 3px;
+}
+
+.metric-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.metric-card-label {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.metric-card-icon {
+    font-size: 1.1rem;
+}
+
+.metric-card-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.2rem;
+}
+
+.metric-card-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.metric-card-delta {
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.metric-card-help {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   KPI GRID
+   ═══════════════════════════════════════════════════════════════════ */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.75rem;
+}
+
+@media (max-width: 1200px) {
+    .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 600px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 400px) {
+    .kpi-grid { grid-template-columns: 1fr; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   HERO HEADER
+   ═══════════════════════════════════════════════════════════════════ */
+.hero-header {
+    border-radius: 16px;
+    padding: 1.75rem 2rem;
+    margin-bottom: 1.5rem;
+}
+
+.hero-header-overview {
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    margin: 0 0 0.25rem;
+}
+
+.hero-header-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.hero-header-subtitle {
+    font-size: 0.85rem;
+    margin: 0.25rem 0 0;
+}
+
+.hero-header-badge {
+    padding: 0.3rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   INSIGHTS PANEL
+   ═══════════════════════════════════════════════════════════════════ */
+.insight-item {
+    padding: 0.75rem 0;
+}
+
+.insight-item:not(:last-child) {
+    border-bottom: 1px solid var(--border);
+}
+
+.insight-badge {
+    padding: 1px 8px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 600;
+}
+
+.insight-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.insight-desc {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin: 0.25rem 0 0;
+}
+
+.insight-recommendation {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin: 0.15rem 0 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CUSTOMER RANKING CARDS
+   ═══════════════════════════════════════════════════════════════════ */
+.customer-rank-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 0.4rem;
+    box-shadow: var(--shadow);
+    transition: all 0.15s ease;
+}
+
+.customer-rank-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+.customer-rank-badge {
+    width: 28px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.customer-rank-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.customer-rank-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.customer-rank-meta {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.customer-rank-revenue {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--primary);
+    flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PROVINCE BAR
+   ═══════════════════════════════════════════════════════════════════ */
+.province-bar-row {
+    margin-bottom: 0.5rem;
+}
+
+.province-bar-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    margin-bottom: 2px;
+}
+
+.province-bar-label {
+    font-weight: 500;
+    color: var(--text);
+}
+
+.province-bar-value {
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.province-bar-track {
+    background: #F1F5F9;
+    border-radius: 4px;
+    height: 6px;
+    overflow: hidden;
+}
+
+.province-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+.province-bar-orders {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    margin-top: 1px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CHARTS
+   ═══════════════════════════════════════════════════════════════════ */
+.chart-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.75rem 0.75rem 0.25rem;
+    margin-bottom: 1rem;
+}
+
+.chart-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 0 0.5rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SECTION HEADERS
+   ═══════════════════════════════════════════════════════════════════ */
+.section-header {
+    margin: 1.5rem 0 0.25rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.section-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin: 0 0 0.75rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   WELCOME SCREEN
+   ═══════════════════════════════════════════════════════════════════ */
+.welcome-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    text-align: center;
+}
+
+.welcome-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.welcome-title {
+    margin: 0 0 0.5rem;
+    color: var(--text);
+}
+
+.welcome-text {
+    color: var(--text-secondary);
+    max-width: 400px;
+    margin: 0 0 1.5rem;
+}
+
+.welcome-steps {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.welcome-step-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    text-align: center;
+    width: 150px;
+}
+
+.welcome-step-icon {
+    font-size: 1.5rem;
+}
+
+.welcome-step-title {
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin: 0.25rem 0;
+}
+
+.welcome-step-desc {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   STREAMLIT OVERRIDES
+   ═══════════════════════════════════════════════════════════════════ */
+[data-testid="stMetric"] {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 1rem;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+}
+
+[data-testid="stMetric"] > div { gap: 0; }
+
+[data-testid="stMetricLabel"] {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+[data-testid="stMetricValue"] {
+    font-size: 1.5rem !important;
+    font-weight: 700 !important;
+    color: var(--text);
+}
+
+[data-testid="stMetricDelta"] {
+    font-size: 0.8rem;
+}
+
+[data-testid="stDataFrame"] {
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+
+.stDataFrame [data-testid="stDataFrameResizable"] { border: none; }
+
+.stDataFrame thead tr th {
+    background: var(--surface) !important;
+    color: var(--text-secondary) !important;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.6rem 0.75rem !important;
+}
+
+.stButton button {
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    font-size: 0.85rem;
+    transition: all 0.15s ease;
+}
+
+.stButton button[kind="primary"] {
+    background: var(--primary);
+    border: none;
+}
+
+.stButton button[kind="primary"]:hover {
+    background: var(--primary-dark);
+    box-shadow: var(--shadow-md);
+}
+
+.stTabs [data-baseweb="tab-list"] {
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.stTabs [data-baseweb="tab"] {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+}
+
+.stTabs [data-baseweb="tab"][aria-selected="true"] {
+    color: var(--primary);
+    font-weight: 600;
+    border-bottom: 2px solid var(--primary);
+}
+
+.stTabs [data-baseweb="tab"]:hover { background: #F8FAFC; }
+
+.streamlit-expanderHeader {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+}
+
+.streamlit-expander {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.stProgress .st-bo { background: var(--border); }
+.stProgress .st-bp { background: var(--primary); }
+
+div[data-testid="stStatusWidget"] {
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+}
+
+.stAlert { border-radius: var(--radius-sm); border: none; }
+
+.st-bb { border-color: var(--border) !important; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   SCROLLBAR
+   ═══════════════════════════════════════════════════════════════════ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .main .block-container { padding: 1rem; }
+    [data-testid="stMetric"] { padding: 0.75rem; }
+    [data-testid="stMetricValue"] { font-size: 1.2rem !important; }
+    .hero-header { padding: 1.25rem; }
+    .hero-header-title { font-size: 1.2rem; }
+}
+
+@media (max-width: 576px) {
+    .main .block-container { padding: 0.75rem; }
+    .welcome-step-card { width: 100%; max-width: 200px; }
+}
