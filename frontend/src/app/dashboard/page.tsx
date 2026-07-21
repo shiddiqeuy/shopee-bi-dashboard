@@ -84,11 +84,11 @@ export default function DashboardPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
         <KpiCard title="Total Revenue" value={kpi ? formatIDR(kpi.total_revenue) : "—"} icon={DollarSign} loading={loading} />
-        <KpiCard title="Total Orders" value={kpi ? kpi.total_orders.toLocaleString() : "—"} icon={ShoppingCart} loading={loading} />
+        <KpiCard title="Total Orders" value={shipping ? shipping.total_orders.toLocaleString() : "—"} icon={ShoppingCart} loading={loading} />
         <KpiCard title="Total Customers" value={kpi ? kpi.total_customers.toLocaleString() : "—"} icon={Users} loading={loading} />
         <KpiCard title="Avg Basket" value={kpi ? formatIDR(kpi.avg_basket) : "—"} icon={TrendingUp} loading={loading} />
-        <KpiCard title="Repeat Rate" value={kpi ? `${(kpi.repeat_rate * 100).toFixed(1)}%` : "—"} icon={Package} loading={loading} />
-        <KpiCard title="Cities" value={city ? city.total_cities.toLocaleString() : "—"} icon={MapPin} loading={loading} />
+        <KpiCard title="Repeat Rate" value={kpi ? `${kpi.repeat_rate.toFixed(1)}%` : "—"} icon={Package} loading={loading} />
+        <KpiCard title="Cities" value={city ? city.cities.length.toLocaleString() : "—"} icon={MapPin} loading={loading} />
       </div>
 
       {insights.length > 0 && (
@@ -101,7 +101,7 @@ export default function DashboardPage() {
                   ? "border-l-red-500 bg-red-50"
                   : "border-l-yellow-500 bg-yellow-50"
               }`}>
-                <p className="text-sm font-medium text-gray-800">{ins.message}</p>
+                <p className="text-sm font-medium text-gray-800">{ins.title}</p>
                 {ins.recommendation && (
                   <p className="text-xs text-gray-500 mt-1">{ins.recommendation}</p>
                 )}
@@ -116,9 +116,9 @@ export default function DashboardPage() {
         {/* Revenue Trend */}
         <div className="chart-container">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Monthly Revenue Trend</h3>
-          {trend?.monthly && trend.monthly.length > 0 ? (
+          {trend?.months && trend.months.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={trend.monthly}>
+              <LineChart data={trend.months}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#94a3b8" />
                 <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" tickFormatter={(v: any) => `${(Number(v) / 1000000).toFixed(0)}M`} />
@@ -134,14 +134,14 @@ export default function DashboardPage() {
         {/* Top Products */}
         <div className="chart-container">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Top Products by Revenue</h3>
-          {product?.top_products && product.top_products.length > 0 ? (
+          {product?.products && product.products.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={product.top_products.slice(0, 8)} layout="vertical">
+              <BarChart data={product.products.slice(0, 8)} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis type="number" tick={{ fontSize: 12 }} stroke="#94a3b8" tickFormatter={(v: any) => `${(Number(v) / 1000000).toFixed(0)}M`} />
                 <YAxis type="category" dataKey="product_name" tick={{ fontSize: 11 }} stroke="#94a3b8" width={140} />
                 <Tooltip formatter={(v: any) => formatIDR(Number(v))} />
-                <Bar dataKey="revenue" fill="#2563eb" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="total_revenue" fill="#2563eb" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -152,14 +152,14 @@ export default function DashboardPage() {
         {/* Monthly Orders */}
         <div className="chart-container">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Monthly Orders</h3>
-          {trend?.monthly && trend.monthly.length > 0 ? (
+          {trend?.months && trend.months.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={trend.monthly}>
+              <BarChart data={trend.months}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#94a3b8" />
                 <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" />
                 <Tooltip />
-                <Bar dataKey="orders" fill="#16a34a" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="order_count" fill="#16a34a" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -170,11 +170,11 @@ export default function DashboardPage() {
         {/* Shipping Distribution */}
         <div className="chart-container">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Shipping Provider Share</h3>
-          {shipping?.couriers && shipping.couriers.length > 0 ? (
+          {shipping?.providers && shipping.providers.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
               <PieChart>
                 <Pie
-                  data={shipping.couriers}
+                  data={shipping.providers}
                   dataKey="order_count"
                   nameKey="shipping_provider"
                   cx="50%"
@@ -182,7 +182,7 @@ export default function DashboardPage() {
                   outerRadius={100}
                   label={({ payload, percent }: any) => `${payload?.shipping_provider || ''} ${((percent || 0) * 100).toFixed(0)}%`}
                 >
-                  {shipping.couriers.map((_: any, i: number) => (
+                  {shipping.providers.map((_: any, i: number) => (
                     <Cell key={i} fill={COLORS[i % COLORS.length]} />
                   ))}
                 </Pie>
