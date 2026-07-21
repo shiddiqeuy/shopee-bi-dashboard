@@ -6,6 +6,9 @@ import streamlit as st
 
 from config.config import DB_PATH, INPUT_DIR, LOG_DIR, OUTPUT_DIR, ANALYTICS
 from streamlit_app.components.hero_header import HeroHeader
+from streamlit_app.styles.loader import load_css
+
+load_css()
 
 
 def render() -> None:
@@ -102,3 +105,6 @@ def render() -> None:
                     st.success("Warehouse rebuilt.")
                 else:
                     st.warning("No data to rebuild from.")
+
+
+render()

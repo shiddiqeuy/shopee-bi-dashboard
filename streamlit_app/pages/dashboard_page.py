@@ -13,6 +13,9 @@ import streamlit as st
 
 from config.config import CITY_COORDS, THEME
 from database.connection import get_connection
+from streamlit_app.styles.loader import load_css
+
+load_css()
 from database.repository import DuckDBRepository
 from streamlit_app.components import (
     ChartCard,
@@ -521,8 +524,7 @@ def _render_welcome() -> None:
         unsafe_allow_html=True,
     )
     if st.button("→ Go to Upload Page", type="primary", key="welcome_upload"):
-        st.session_state.page = "Upload"
-        st.rerun()
+        st.switch_page("streamlit_app/pages/upload.py")
 
 
 def _render_download_section(repo: DuckDBRepository) -> None:
@@ -657,3 +659,6 @@ def render() -> None:
     with st.expander("📄 View Raw Orders Data"):
         raw = repo.query("SELECT * FROM orders ORDER BY order_date DESC LIMIT 100")
         data_table(raw, height=300)
+
+
+render()

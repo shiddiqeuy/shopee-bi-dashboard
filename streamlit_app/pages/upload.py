@@ -15,6 +15,9 @@ from database.repository import DuckDBRepository
 from etl.shopee.extractor import ShopeeExtractor
 from streamlit_app.components.hero_header import HeroHeader
 from streamlit_app.services.etl_service import ETLService
+from streamlit_app.styles.loader import load_css
+
+load_css()
 
 
 def _get_etl_service() -> ETLService:
@@ -85,8 +88,7 @@ def _render_upload_section() -> None:
     if not new_files:
         st.info("All files have already been processed. Select new files to upload.")
         if st.button("→ Go to Dashboard", type="primary"):
-            st.session_state.page = "Dashboard"
-            st.rerun()
+            st.switch_page("streamlit_app/app.py")
         return
 
     if st.button("💾 Save & Run ETL on All", type="primary", use_container_width=True):
@@ -136,8 +138,7 @@ def _render_upload_section() -> None:
             st.caption(f"  • {name}: {rows} rows")
 
         if st.button("→ Go to Dashboard", type="primary"):
-            st.session_state.page = "Dashboard"
-            st.rerun()
+            st.switch_page("streamlit_app/app.py")
 
 
 def _render_file_management() -> None:
@@ -215,3 +216,6 @@ def render() -> None:
     _render_file_management()
     st.divider()
     _render_upload_section()
+
+
+render()
