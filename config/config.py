@@ -347,6 +347,24 @@ PAYMENT_ALIASES: dict[str, str] = {
 }
 
 # ---------------------------------------------------------------------------
+# Order status normalisation (canonical English → match codebase queries)
+# ---------------------------------------------------------------------------
+STATUS_ALIASES: dict[str, str] = {
+    "batal": "cancelled",
+    "dibatalkan": "cancelled",
+    "cancel": "cancelled",
+    "cancelled": "cancelled",
+    "selesai": "completed",
+    "completed": "completed",
+    "selesai": "completed",
+    "dikirim": "shipped",
+    "telah dikirim": "shipped",
+    "sedang dikirim": "in_transit",
+    "perlu dikirim": "pending_shipment",
+    "belum bayar": "pending_payment",
+}
+
+# ---------------------------------------------------------------------------
 # Product normalisation (brand / product mapping)
 # ---------------------------------------------------------------------------
 PRODUCT_ALIASES: dict[str, str] = {

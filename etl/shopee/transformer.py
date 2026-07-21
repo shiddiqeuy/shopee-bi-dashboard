@@ -20,6 +20,7 @@ from config.config import (
     PRODUCT_ALIASES,
     PROVINCE_ALIASES,
     SHIPPING_ALIASES,
+    STATUS_ALIASES,
 )
 from core.interfaces import Transformer
 from etl.validator import validate_rows
@@ -55,7 +56,9 @@ class ShopeeTransformer(Transformer):
     def _normalize_row(self, row: dict[str, Any]) -> dict[str, Any]:
         return {
             "order_id": safe_string(row.get("order_id")),
-            "order_status": safe_string(row.get("order_status")).lower(),
+            "order_status": normalize_with_alias(
+                row.get("order_status"), STATUS_ALIASES, default="unknown"
+            ),
             "product_name": self._normalize_product_name(
                 safe_string(row.get("product_name"))
             ),
