@@ -35,6 +35,8 @@ _DEFAULTS = {
     "dashboard_generated": False,
     "last_uploaded": None,
     "etl_result": None,
+    "dashboard_path": None,
+    "dashboard_filename": None,
 }
 for key, value in _DEFAULTS.items():
     st.session_state.setdefault(key, value)

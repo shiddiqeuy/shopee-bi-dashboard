@@ -13,9 +13,6 @@ import streamlit as st
 
 from config.config import CITY_COORDS, THEME
 from database.connection import get_connection
-from streamlit_app.styles.loader import load_css
-
-load_css()
 from database.repository import DuckDBRepository
 from streamlit_app.components import (
     ChartCard,
@@ -25,7 +22,6 @@ from streamlit_app.components import (
     SectionTitle,
     data_table,
 )
-from streamlit_app.styles.themes import inject_theme_css
 
 _CHART_COLORS = THEME["chart_colors"]
 _PALETTE = _CHART_COLORS
@@ -536,27 +532,37 @@ def _render_download_section(repo: DuckDBRepository) -> None:
             unsafe_allow_html=True,
         )
         if st.button("🔄 Generate & Download", type="primary", use_container_width=True):
-            with st.status("Generating Excel dashboard...", expanded=True) as status:
-                from streamlit_app.services.analytics_service import AnalyticsService
-                from streamlit_app.services.dashboard_service import DashboardService
+            try:
+                with st.status("Generating Excel dashboard...", expanded=True) as status:
+                    from streamlit_app.services.analytics_service import AnalyticsService
+                    from streamlit_app.services.dashboard_service import DashboardService
 
-                st.write("📊 Computing analytics...")
-                analytics_data = AnalyticsService(repo).compute_all()
-                st.write("✅ Analytics computed")
+                    st.write("📊 Computing analytics...")
+                    analytics_data = AnalyticsService(repo).compute_all()
+                    st.write("✅ Analytics computed")
 
-                st.write("📝 Building workbook...")
-                path = DashboardService(repo).generate(analytics_data)
-                st.write("✅ Dashboard saved")
-                status.update(label="Dashboard generated!", state="complete")
+                    st.write("📝 Building workbook...")
+                    path = DashboardService(repo).generate(analytics_data)
+                    st.write("✅ Dashboard saved")
+                    status.update(label="Dashboard generated!", state="complete")
 
-            with open(path, "rb") as f:
+                st.session_state.dashboard_path = str(path)
+                st.session_state.dashboard_filename = Path(path).name
+                st.rerun()
+            except Exception as e:
+                st.error(f"Failed to generate dashboard: {e}")
+
+        saved_path = st.session_state.get("dashboard_path")
+        if saved_path and Path(saved_path).exists():
+            with open(saved_path, "rb") as f:
                 st.download_button(
                     label="📥 Download Excel Dashboard",
                     data=f,
-                    file_name=Path(path).name,
+                    file_name=st.session_state.get("dashboard_filename", "dashboard.xlsx"),
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     type="primary",
                     use_container_width=True,
+                    key="download_dashboard",
                 )
 
 

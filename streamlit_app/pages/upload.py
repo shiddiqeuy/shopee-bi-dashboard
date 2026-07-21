@@ -15,9 +15,6 @@ from database.repository import DuckDBRepository
 from etl.shopee.extractor import ShopeeExtractor
 from streamlit_app.components.hero_header import HeroHeader
 from streamlit_app.services.etl_service import ETLService
-from streamlit_app.styles.loader import load_css
-
-load_css()
 
 
 def _get_etl_service() -> ETLService:
