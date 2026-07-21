@@ -17,8 +17,7 @@ Built with Clean Architecture, SOLID principles, and a modular plugin system for
 # Install dependencies
 pip install -r requirements.txt
 
-# Place Shopee order export files in input/
-# Run the full pipeline
+# Run the full pipeline (CLI)
 python main.py
 
 # Or run individual stages
@@ -36,7 +35,7 @@ python -m streamlit run streamlit_app/app.py
 
 Web-based interactive dashboard with:
 - **Dashboard** — KPIs, 8 Altair chart panels, business insights
-- **Upload** — Upload files, preview columns, run ETL with live progress
+- **Upload** — Upload files via browser (saved to `input/`), preview columns, column validation, run ETL with live progress, manage existing files (list, run/re-run ETL, delete)
 - **Reports** — Generate and download the Excel dashboard
 - **Settings** — System info, analytics parameters, data management
 
@@ -81,7 +80,7 @@ streamlit_app/  → Streamlit BI app (16 files)
   pages/        → Dashboard, Upload, Reports, Settings pages
   services/     → ETL, Analytics, Dashboard services
   components/   → Reusable UI components
-input/          → Shopee export files (.xlsx)
+input/          → Uploaded Shopee export files (managed from frontend)
 output/         → Generated dashboard (.xlsx)
 logs/           → ETL and application logs
 ```
