@@ -31,8 +31,40 @@ _DATETIME_FORMATS = [
 _WHITESPACE_RE = re.compile(r"\s+")
 
 
+def _parse_indo_number(text: str) -> str:
+    """Convert Indonesian number format to Python-standard decimal string.
+
+    Indonesian format:  dots = thousands sep  (e.g. '51.410')
+                       comma = decimal sep    (e.g. '51,5')
+    English format:    comma = thousands sep  (e.g. '51,410')
+                       dot   = decimal sep    (e.g. '51.5')
+
+    Auto-detection: if a comma is present → Indonesian format.
+    If only dots exist and the last group after the final dot has
+    exactly 3 digits → Indonesian format (whole number).
+    Otherwise → English/standard format.
+    """
+    cleaned = text.strip()
+    has_comma = "," in cleaned
+    has_dot = "." in cleaned
+
+    if has_comma:
+        # Explicit Indonesian format: remove dots, replace comma with dot
+        return cleaned.replace(".", "").replace(",", ".")
+    if has_dot:
+        parts = cleaned.split(".")
+        # If the last group is exactly 3 digits, likely Indonesian thousands
+        if len(parts) > 1 and len(parts[-1]) == 3 and all(p.isdigit() for p in parts):
+            return cleaned.replace(".", "")
+    return cleaned
+
+
 def safe_decimal(value: Any, default: Decimal = Decimal("0")) -> Decimal:
-    """Convert *value* to Decimal safely."""
+    """Convert *value* to Decimal safely.
+
+    Handles both Indonesian (dot=thousands, comma=decimal) and
+    English (comma=thousands, dot=decimal) number formats.
+    """
     if value is None:
         return default
     if isinstance(value, Decimal):
@@ -40,10 +72,11 @@ def safe_decimal(value: Any, default: Decimal = Decimal("0")) -> Decimal:
     if isinstance(value, (int, float)):
         return Decimal(str(value))
     if isinstance(value, str):
-        cleaned = value.strip().replace(",", "").replace("Rp", "").replace("rp", "")
+        cleaned = value.strip().replace("Rp", "").replace("rp", "").replace("IDR", "")
         cleaned = _WHITESPACE_RE.sub("", cleaned)
-        if cleaned in ("", "-", "--", "null", "none"):
+        if cleaned in ("", "-", "--", "null", "none", "NaT"):
             return default
+        cleaned = _parse_indo_number(cleaned)
         try:
             return Decimal(cleaned)
         except InvalidOperation:
@@ -71,16 +104,20 @@ def safe_int(value: Any, default: int = 0) -> int:
 
 
 def safe_float(value: Any, default: float = 0.0) -> float:
-    """Convert *value* to float safely."""
+    """Convert *value* to float safely.
+
+    Handles both Indonesian and English number formats.
+    """
     if value is None:
         return default
     if isinstance(value, (int, float)):
         return float(value)
     if isinstance(value, str):
-        cleaned = value.strip().replace(",", "").replace("Rp", "").replace("rp", "")
+        cleaned = value.strip().replace("Rp", "").replace("rp", "").replace("IDR", "")
         cleaned = _WHITESPACE_RE.sub("", cleaned)
-        if cleaned in ("", "-", "--", "null", "none"):
+        if cleaned in ("", "-", "--", "null", "none", "NaT"):
             return default
+        cleaned = _parse_indo_number(cleaned)
         try:
             return float(cleaned)
         except ValueError:

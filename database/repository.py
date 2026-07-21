@@ -30,8 +30,8 @@ class DuckDBRepository(Repository):
         row_count = df.height
         if row_count == 0:
             return 0
-        self.conn.execute("DELETE FROM orders WHERE order_id IN (SELECT order_id FROM df)")
         self.conn.register("df", df.to_pandas())
+        self.conn.execute("DELETE FROM orders WHERE order_id IN (SELECT order_id FROM df)")
         self.conn.execute("INSERT INTO orders SELECT *, CURRENT_TIMESTAMP AS _loaded_at FROM df")
         log.info("Inserted %d rows into orders staging", row_count)
         return row_count
