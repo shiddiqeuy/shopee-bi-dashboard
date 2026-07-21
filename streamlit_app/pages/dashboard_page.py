@@ -157,7 +157,7 @@ def _render_top_customers(repo: DuckDBRepository) -> None:
         LIMIT 20
     """
     raw = repo.query(sql)
-    if not raw:
+    if raw.is_empty():
         return
 
     df = pl.DataFrame(raw).with_columns(
