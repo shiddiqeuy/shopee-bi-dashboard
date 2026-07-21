@@ -33,21 +33,20 @@ def render() -> None:
         "Log Files": str(len(log_files)),
     }
 
-    st.markdown('<div class="card" style="margin-bottom:1.5rem;">', unsafe_allow_html=True)
-    for label, value in info.items():
-        col1, col2 = st.columns([1, 3])
-        with col1:
-            st.markdown(
-                f'<span style="font-size:0.8rem;font-weight:500;color:var(--text-secondary);">'
-                f"{label}</span>",
-                unsafe_allow_html=True,
-            )
-        with col2:
-            st.markdown(
-                f'<span style="font-size:0.8rem;color:var(--text);">{value}</span>',
-                unsafe_allow_html=True,
-            )
-    st.markdown("</div>", unsafe_allow_html=True)
+    with st.container(border=True):
+        for label, value in info.items():
+            col1, col2 = st.columns([1, 3])
+            with col1:
+                st.markdown(
+                    f'<span style="font-size:0.8rem;font-weight:500;color:var(--text-secondary);">'
+                    f"{label}</span>",
+                    unsafe_allow_html=True,
+                )
+            with col2:
+                st.markdown(
+                    f'<span style="font-size:0.8rem;color:var(--text);">{value}</span>',
+                    unsafe_allow_html=True,
+                )
 
     # ── Analytics Params ───────────────────────────────────────────────
     st.markdown(
@@ -55,24 +54,23 @@ def render() -> None:
         unsafe_allow_html=True,
     )
 
-    st.markdown('<div class="card" style="margin-bottom:1.5rem;">', unsafe_allow_html=True)
-    for key, value in ANALYTICS.items():
-        col1, col2 = st.columns([1, 3])
-        with col1:
-            st.markdown(
-                f'<span style="font-size:0.8rem;font-weight:500;color:var(--text-secondary);">'
-                f"{key}</span>",
-                unsafe_allow_html=True,
-            )
-        with col2:
-            if isinstance(value, dict):
-                st.json(value)
-            else:
+    with st.container(border=True):
+        for key, value in ANALYTICS.items():
+            col1, col2 = st.columns([1, 3])
+            with col1:
                 st.markdown(
-                    f'<span style="font-size:0.8rem;color:var(--text);">{value}</span>',
+                    f'<span style="font-size:0.8rem;font-weight:500;color:var(--text-secondary);">'
+                    f"{key}</span>",
                     unsafe_allow_html=True,
                 )
-    st.markdown("</div>", unsafe_allow_html=True)
+            with col2:
+                if isinstance(value, dict):
+                    st.json(value)
+                else:
+                    st.markdown(
+                        f'<span style="font-size:0.8rem;color:var(--text);">{value}</span>',
+                        unsafe_allow_html=True,
+                    )
 
     # ── Data Management ────────────────────────────────────────────────
     st.markdown(
@@ -80,28 +78,27 @@ def render() -> None:
         unsafe_allow_html=True,
     )
 
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if st.button("🗑️ Clear All Data", type="secondary", use_container_width=True):
-            from database.connection import get_connection
+    with st.container(border=True):
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("🗑️ Clear All Data", type="secondary", use_container_width=True):
+                from database.connection import get_connection
 
-            conn = get_connection()
-            conn.execute("DELETE FROM orders")
-            for tbl in ["fact_sales", "dim_customer", "dim_product", "dim_city", "dim_date"]:
-                conn.execute(f"DROP TABLE IF EXISTS {tbl}")
-            st.success("All data cleared.")
-            st.rerun()
+                conn = get_connection()
+                conn.execute("DELETE FROM orders")
+                for tbl in ["fact_sales", "dim_customer", "dim_product", "dim_city", "dim_date"]:
+                    conn.execute(f"DROP TABLE IF EXISTS {tbl}")
+                st.success("All data cleared.")
+                st.rerun()
 
-    with col3:
-        if st.button("🔄 Reset Warehouse", type="secondary", use_container_width=True):
-            from database.connection import get_connection
-            from database.repository import DuckDBRepository
+        with col3:
+            if st.button("🔄 Reset Warehouse", type="secondary", use_container_width=True):
+                from database.connection import get_connection
+                from database.repository import DuckDBRepository
 
-            repo = DuckDBRepository(get_connection())
-            if repo.table_exists("orders"):
-                repo.build_warehouse()
-                st.success("Warehouse rebuilt.")
-            else:
-                st.warning("No data to rebuild from.")
-    st.markdown("</div>", unsafe_allow_html=True)
+                repo = DuckDBRepository(get_connection())
+                if repo.table_exists("orders"):
+                    repo.build_warehouse()
+                    st.success("Warehouse rebuilt.")
+                else:
+                    st.warning("No data to rebuild from.")

@@ -172,10 +172,6 @@ def _render_header(analytics: dict[str, Any]) -> None:
 
 
 def _render_kpi_cards(kpi_data: list) -> None:
-    st.markdown(
-        "<div class='kpi-grid'>" + "</div>",
-        unsafe_allow_html=True,
-    )
     cols = st.columns(6)
     for col, (icon, label, value, delta, up, help_text, accent) in zip(cols, kpi_data):
         with col:
@@ -448,33 +444,31 @@ def _render_city_map(cities: list[dict[str, Any]]) -> None:
 def _render_province_stats(provinces: list[dict[str, Any]]) -> None:
     df = pl.DataFrame(provinces).with_columns(pl.col("revenue").cast(pl.Float64)).to_pandas()
 
-    st.markdown(
-        '<div class="card" style="height:490px;overflow-y:auto;">'
-        '<p class="card-title">Province Breakdown</p>',
-        unsafe_allow_html=True,
-    )
-
-    for _, row in df.iterrows():
-        rev_fmt = _format_rp(row["revenue"])
-        bar_pct = min(row["revenue"] / df["revenue"].max() * 100, 100)
+    with st.container(border=True):
         st.markdown(
-            f"""
-        <div class="province-bar-row">
-            <div class="province-bar-header">
-                <span class="province-bar-label">{row['province']}</span>
-                <span class="province-bar-value">{rev_fmt}</span>
-            </div>
-            <div class="province-bar-track">
-                <div class="province-bar-fill"
-                     style="width:{bar_pct:.1f}%;background:linear-gradient(90deg,#2563EB,#3B82F6);"></div>
-            </div>
-            <div class="province-bar-orders">{int(row['order_count']):,} orders</div>
-        </div>
-        """,
+            '<p class="card-title">Province Breakdown</p>',
             unsafe_allow_html=True,
         )
 
-    st.markdown("</div>", unsafe_allow_html=True)
+        for _, row in df.iterrows():
+            rev_fmt = _format_rp(row["revenue"])
+            bar_pct = min(row["revenue"] / df["revenue"].max() * 100, 100)
+            st.markdown(
+                f"""
+            <div class="province-bar-row">
+                <div class="province-bar-header">
+                    <span class="province-bar-label">{row['province']}</span>
+                    <span class="province-bar-value">{rev_fmt}</span>
+                </div>
+                <div class="province-bar-track">
+                    <div class="province-bar-fill"
+                         style="width:{bar_pct:.1f}%;background:linear-gradient(90deg,#2563EB,#3B82F6);"></div>
+                </div>
+                <div class="province-bar-orders">{int(row['order_count']):,} orders</div>
+            </div>
+            """,
+                unsafe_allow_html=True,
+            )
 
 
 def _render_geo_section(analytics: dict[str, Any]) -> None:
@@ -634,26 +628,25 @@ def render() -> None:
         with prod_chart_col:
             _render_top_products(analytics, height=400)
         with prod_table_col:
-            st.markdown(
-                '<div class="card" style="height:460px;overflow-y:auto;">'
-                '<p class="card-title">📋 Product Details</p>',
-                unsafe_allow_html=True,
-            )
-            products = analytics.get("product", {}).get("products", [])
-            if products:
-                pdf = pl.DataFrame(products[:15]).to_pandas()
-                pdf["Revenue"] = pdf["total_revenue"].apply(_format_rp)
-                st.dataframe(
-                    pdf[["product_name", "Revenue", "total_quantity"]],
-                    column_config={
-                        "product_name": "Product",
-                        "Revenue": "Revenue",
-                        "total_quantity": "Qty Sold",
-                    },
-                    use_container_width=True,
-                    hide_index=True,
+            with st.container(border=True):
+                st.markdown(
+                    '<p class="card-title">📋 Product Details</p>',
+                    unsafe_allow_html=True,
                 )
-            st.markdown("</div>", unsafe_allow_html=True)
+                products = analytics.get("product", {}).get("products", [])
+                if products:
+                    pdf = pl.DataFrame(products[:15]).to_pandas()
+                    pdf["Revenue"] = pdf["total_revenue"].apply(_format_rp)
+                    st.dataframe(
+                        pdf[["product_name", "Revenue", "total_quantity"]],
+                        column_config={
+                            "product_name": "Product",
+                            "Revenue": "Revenue",
+                            "total_quantity": "Qty Sold",
+                        },
+                        use_container_width=True,
+                        hide_index=True,
+                    )
 
     with tab_geo:
         _render_geo_section(analytics)
