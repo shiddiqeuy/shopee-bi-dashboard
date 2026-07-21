@@ -49,7 +49,6 @@ def _run_etl(file_path: str) -> dict:
 
 
 def _preview_file(file_bytes: bytes, filename: str) -> tuple[list[dict], pl.DataFrame] | None:
-    """Preview an uploaded file. Returns (raw_rows, preview_df) or None on error."""
     try:
         with NamedTemporaryFile(delete=False, suffix=Path(filename).suffix) as tmp:
             tmp.write(file_bytes)
@@ -67,10 +66,10 @@ def _preview_file(file_bytes: bytes, filename: str) -> tuple[list[dict], pl.Data
 
 
 def _render_upload_section() -> None:
-    """Upload new files, preview, and trigger ETL (supports multiple files)."""
     st.markdown("### Upload Files")
     st.markdown(
-        "<p style='color:#64748b;'>Upload one or more Shopee order export files. All files are saved to the input directory and processed.</p>",
+        "<p style='color:var(--text-secondary);font-size:0.85rem;margin-bottom:0.75rem;'>"
+        "Upload one or more Shopee order export files. All files are saved to the input directory and processed.</p>",
         unsafe_allow_html=True,
     )
 
@@ -84,15 +83,14 @@ def _render_upload_section() -> None:
     if not uploaded_files:
         return
 
-    # Filter out previously seen files
     new_files = [f for f in uploaded_files if hash(f.getvalue()) != st.session_state.get("file_hash")]
     if not new_files:
         st.info("All files have already been processed. Select new files to upload.")
         if st.button("→ Go to Dashboard", type="primary"):
-            st.switch_page("app.py")
+            st.session_state.page = "Dashboard"
+            st.rerun()
         return
 
-    # ── Batch Save & Run ETL ──
     total_rows = 0
     success_count = 0
     file_results = []
@@ -141,14 +139,15 @@ def _render_upload_section() -> None:
             st.caption(f"  • {name}: {rows} rows")
 
         if st.button("→ Go to Dashboard", type="primary"):
-            st.switch_page("app.py")
+            st.session_state.page = "Dashboard"
+            st.rerun()
 
 
 def _render_file_management() -> None:
-    """List, delete, and re-run ETL on existing files in INPUT_DIR."""
     st.markdown("### Existing Files")
     st.markdown(
-        "<p style='color:#64748b;'>Manage files in the input directory.</p>",
+        "<p style='color:var(--text-secondary);font-size:0.85rem;margin-bottom:0.75rem;'>"
+        "Manage files in the input directory.</p>",
         unsafe_allow_html=True,
     )
 
@@ -171,8 +170,11 @@ def _render_file_management() -> None:
         st.info("No files in input directory.", icon="📁")
         return
 
-    # ── File table ──
-    st.markdown(f"**{len(files)} file(s)** in `{INPUT_DIR}`")
+    st.markdown(
+        f"<p style='font-size:0.8rem;font-weight:500;color:var(--text-secondary);margin-bottom:0.5rem;'>"
+        f"{len(files)} file(s) in <code>{INPUT_DIR}</code></p>",
+        unsafe_allow_html=True,
+    )
 
     for f in files:
         mod_time = datetime.fromtimestamp(f["modified"]).strftime("%Y-%m-%d %H:%M:%S")
@@ -193,7 +195,6 @@ def _render_file_management() -> None:
 
 
 def _run_etl_on_file(filename: str) -> None:
-    """Run ETL on a file from the input directory."""
     file_path = str(INPUT_DIR / filename)
     with st.status(f"Running ETL on `{filename}`...", expanded=True) as status:
         st.write("📂 Processing file...")
@@ -214,7 +215,17 @@ def _run_etl_on_file(filename: str) -> None:
 
 
 def render() -> None:
-    st.title("Upload Data")
+    st.markdown(
+        """
+    <div style="background:linear-gradient(135deg,#2563EB,#1D4ED8);border-radius:16px;padding:1.5rem 2rem;margin-bottom:1.5rem;">
+        <h1 style="color:white;font-size:1.4rem;font-weight:700;margin:0;">📁 Upload Data</h1>
+        <p style="color:rgba(255,255,255,0.6);font-size:0.85rem;margin:0.25rem 0 0;">
+            Upload Shopee export files, run ETL, and build the analytics warehouse.
+        </p>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
 
     _render_file_management()
     st.divider()

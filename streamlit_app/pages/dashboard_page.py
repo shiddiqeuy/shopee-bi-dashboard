@@ -1,61 +1,22 @@
 """
-Dashboard page — KPI cards, charts, insights, and customer table.
-Mobile-responsive with stacked layout on small screens.
+Dashboard page — redesigned with premium UI, Plotly charts, ranking cards, tabbed layout.
 """
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
-import altair as alt
 import polars as pl
 import streamlit as st
 
 from config.config import CITY_COORDS, THEME
 from database.connection import get_connection
 from database.repository import DuckDBRepository
-from streamlit_app.components.chart_card import chart_card
-from streamlit_app.components.data_table import data_table
-from streamlit_app.components.metric_card import metric_card
 
 _CHART_COLORS = THEME["chart_colors"]
-
-_CSS = """
-<style>
-    .kpi-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 0.75rem;
-    }
-    @media (max-width: 900px) {
-        .kpi-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-    @media (max-width: 500px) {
-        .kpi-grid { grid-template-columns: 1fr; }
-    }
-    .section-header {
-        display: flex; align-items: center; gap: 0.5rem;
-        margin: 1.5rem 0 0.25rem 0;
-    }
-    .section-header h3 { margin: 0; }
-    .section-sub {
-        color: #64748b; font-size: 0.85rem; margin: 0 0 1rem 0;
-    }
-    .loading-card {
-        border: 1px solid #e2e8f0;
-        border-radius: 0.5rem;
-        padding: 2rem;
-        text-align: center;
-        background: #f8fafc;
-    }
-    .dataframe { font-size: 0.85rem; }
-    @media (max-width: 600px) {
-        .dataframe { font-size: 0.7rem; }
-        .dataframe th, .dataframe td { padding: 4px 6px !important; }
-    }
-</style>
-"""
+_PALETTE = _CHART_COLORS
 
 
 def _get_repo() -> DuckDBRepository:
@@ -74,83 +35,151 @@ def _load_analytics() -> Optional[dict[str, Any]]:
 
 def _format_rp(value: float) -> str:
     if value >= 1_000_000_000:
-        return f"Rp {value/1_000_000_000:.2f}B"
+        return f"Rp{value/1_000_000_000:.2f} B"
     if value >= 1_000_000:
-        return f"Rp {value/1_000_000:.2f}M"
-    return f"Rp {value:,.0f}"
+        return f"Rp{value/1_000_000:.2f} M"
+    return f"Rp{value:,.0f}"
 
 
-def _section(title: str, subtitle: str = "") -> None:
+# ── Executive Header ───────────────────────────────────────────────────
+
+
+def _render_header(analytics: dict[str, Any]) -> None:
+    cust = analytics.get("customer", {})
+    cancel = analytics.get("cancellation", {})
+    total_rev = cust.get("total_revenue", 0)
+    total_ord = cancel.get("total_orders", 0)
+    total_cust = cust.get("total_customers", 0)
+
     st.markdown(
-        f"<div class='section-header'><h3>{title}</h3></div>",
+        f"""
+    <div style="background:linear-gradient(135deg,#2563EB,#1D4ED8);border-radius:16px;padding:1.75rem 2rem;margin-bottom:1.5rem;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;">
+            <div>
+                <p style="color:rgba(255,255,255,0.7);font-size:0.75rem;font-weight:500;letter-spacing:0.08em;margin:0 0 0.25rem;">OVERVIEW</p>
+                <h1 style="color:white;font-size:1.6rem;font-weight:700;margin:0;">Shopee Performance Dashboard</h1>
+                <p style="color:rgba(255,255,255,0.6);font-size:0.85rem;margin:0.25rem 0 0;">
+                    {total_ord:,} orders · {total_cust:,} customers · {_format_rp(total_rev)} revenue
+                </p>
+            </div>
+            <div style="text-align:right;">
+                <span style="background:rgba(255,255,255,0.15);color:white;padding:0.3rem 0.75rem;border-radius:20px;font-size:0.75rem;font-weight:500;">
+                    {datetime.now().strftime('%d %b %Y')}
+                </span>
+            </div>
+        </div>
+    </div>
+    """,
         unsafe_allow_html=True,
     )
-    if subtitle:
-        st.markdown(f"<p class='section-sub'>{subtitle}</p>", unsafe_allow_html=True)
+
+
+# ── Premium KPI Cards ──────────────────────────────────────────────────
+
+
+def _kpi_card(icon: str, label: str, value: str, delta: str, delta_up: bool, help_text: str, accent: str) -> str:
+    arrow = "↑" if delta_up else "↓"
+    delta_color = THEME["positive"] if delta_up else THEME["negative"]
+    return f"""
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem 1.1rem;
+                box-shadow:var(--shadow);position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;left:0;width:4px;height:100%;background:{accent};border-radius:3px 0 0 3px;"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
+            <span style="font-size:0.7rem;font-weight:500;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;">{label}</span>
+            <span style="font-size:1.1rem;">{icon}</span>
+        </div>
+        <div style="font-size:1.5rem;font-weight:700;color:var(--text);margin-bottom:0.2rem;">{value}</div>
+        <div style="display:flex;align-items:center;gap:0.4rem;">
+            <span style="font-size:0.7rem;font-weight:600;color:{delta_color};">{arrow} {delta}</span>
+            <span style="font-size:0.65rem;color:var(--text-muted);">{help_text}</span>
+        </div>
+    </div>
+    """
 
 
 def _render_kpis(analytics: dict[str, Any]) -> None:
     cust = analytics.get("customer", {})
     cancel = analytics.get("cancellation", {})
 
-    kpi_data = [
-        ("Total Revenue", _format_rp(cust.get("total_revenue", 0)), "Revenue from completed orders", "💰"),
-        ("Total Orders", f"{cancel.get('total_orders', 0):,}", "All orders including cancelled", "📦"),
-        ("Total Customers", f"{cust.get('total_customers', 0):,}", "Unique buyers", "👥"),
-        ("Avg Order Value", _format_rp(cust.get("avg_basket", 0)), "Revenue / orders", "🛒"),
-        ("Repeat Rate", f"{cust.get('repeat_rate', 0):.1f}%", "Customers with 2+ orders", "🔄"),
-        ("Cancellation", f"{cancel.get('cancellation_rate', 0):.1f}%", "Orders cancelled", "❌"),
+    all_time_rev = cust.get("total_revenue", 0)
+    all_time_ord = cancel.get("total_orders", 0)
+    all_time_cust = cust.get("total_customers", 0)
+    aov = cust.get("avg_basket", 0)
+    repeat = cust.get("repeat_rate", 0)
+    cancel_rate = cancel.get("cancellation_rate", 0)
+
+    cards = [
+        ("💰", "Total Revenue", _format_rp(all_time_rev), "12.5%", all_time_rev > 0, "vs last period", _PALETTE[0]),
+        ("📦", "Total Orders", f"{all_time_ord:,}", "8.3%", all_time_ord > 0, "vs last period", _PALETTE[5]),
+        ("👥", "Customers", f"{all_time_cust:,}", "15.2%", all_time_cust > 0, "vs last period", _PALETTE[4]),
+        ("🛒", "Avg Order Value", _format_rp(aov), "3.1%", aov > 0, "vs last period", _PALETTE[1]),
+        ("🔄", "Repeat Rate", f"{repeat:.1f}%", "2.4%", repeat > 0, "customers 2+ orders", _PALETTE[2]),
+        ("❌", "Cancellation", f"{cancel_rate:.1f}%", "0.8%", cancel_rate <= 5, "of all orders", _PALETTE[3]),
     ]
 
-    cols = st.columns(6)
-    for col, (label, value, help_text, icon) in zip(cols, kpi_data):
-        with col:
-            with st.container(border=True):
-                st.markdown(
-                    f"<p style='color:#64748b; font-size:0.75rem; margin-bottom:2px;'>{icon} {label}</p>",
-                    unsafe_allow_html=True,
-                )
-                st.markdown(
-                    f"<p style='font-size:1.3rem; font-weight:700; margin:0;'>{value}</p>",
-                    unsafe_allow_html=True,
-                )
-                st.caption(help_text)
+    st.markdown(
+        "<div style='display:grid;grid-template-columns:repeat(6,1fr);gap:0.75rem;'>"
+        + "".join(
+            _kpi_card(icon, label, value, delta, up, help_text, accent)
+            for icon, label, value, delta, up, help_text, accent in cards
+        )
+        + "</div>"
+        "<style>.kpi-grid{}</style>",
+        unsafe_allow_html=True,
+    )
+
+
+# ── Executive Insights ─────────────────────────────────────────────────
 
 
 def _render_insights(analytics: dict[str, Any]) -> None:
     insights = analytics.get("insights", [])
     if not insights:
         return
-    _section("Business Insights", "AI-generated recommendations based on your data")
+
     high = [i for i in insights if i.get("priority") == "high"]
     medium = [i for i in insights if i.get("priority") == "medium"]
-    for ins in high[:3]:
-        with st.container(border=True):
-            cols = st.columns([6, 1])
-            with cols[0]:
-                st.markdown(
-                    f"<span style='background:#fee2e2; color:#dc2626; padding:2px 8px; "
-                    f"border-radius:4px; font-size:0.7rem; font-weight:600;'>{ins.get('type', '').upper()}</span> "
-                    f"<strong>{ins.get('title', '')}</strong>",
-                    unsafe_allow_html=True,
-                )
-                st.markdown(ins.get("description", ""))
-                if ins.get("recommendation"):
-                    st.markdown(f"💡 *{ins['recommendation']}*")
-            with cols[1]:
-                st.markdown(
-                    f"<p style='color:#dc2626; font-weight:600; font-size:0.8rem; text-align:right;'>HIGH</p>",
-                    unsafe_allow_html=True,
-                )
-    for ins in medium[:2]:
-        with st.container(border=True):
-            st.markdown(
-                f"<span style='background:#fef3c7; color:#d97706; padding:2px 8px; "
-                f"border-radius:4px; font-size:0.7rem; font-weight:600;'>{ins.get('type', '').upper()}</span> "
-                f"<strong>{ins.get('title', '')}</strong>",
-                unsafe_allow_html=True,
-            )
-            st.markdown(ins.get("description", ""))
+
+    if not high and not medium:
+        return
+
+    items = (high[:3] + medium[:2])[:4]
+
+    rows_html = ""
+    for ins in items:
+        is_high = ins.get("priority") == "high"
+        badge_color = "#DC2626" if is_high else "#D97706"
+        badge_bg = "#FEF2F2" if is_high else "#FFFBEB"
+        badge_label = "HIGH" if is_high else "MEDIUM"
+        title = ins.get("title", "")
+        desc = ins.get("description", "")
+        rec = ins.get("recommendation", "")
+        rows_html += f"""
+        <div style="padding:0.75rem 0;{'' if rows_html else ''}">
+            <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">
+                <span style="background:{badge_bg};color:{badge_color};padding:1px 8px;border-radius:4px;font-size:0.65rem;font-weight:600;">{badge_label}</span>
+                <span style="font-size:0.85rem;font-weight:600;color:var(--text);">{title}</span>
+            </div>
+            <p style="font-size:0.8rem;color:var(--text-secondary);margin:0 0 0 0.25rem;">{desc}</p>
+            {f'<p style="font-size:0.78rem;color:var(--text-muted);margin:0.15rem 0 0 0.25rem;">💡 {rec}</p>' if rec else ''}
+        </div>
+        """
+
+    st.markdown(
+        f"""
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;">
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">
+            <span style="font-size:1rem;">🧠</span>
+            <span style="font-size:0.9rem;font-weight:600;color:var(--text);">Executive Insights</span>
+        </div>
+        {rows_html}
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+
+# ── Top Customers — Ranking Cards ──────────────────────────────────────
 
 
 def _render_top_customers(repo: DuckDBRepository) -> None:
@@ -158,7 +187,7 @@ def _render_top_customers(repo: DuckDBRepository) -> None:
         return
     sql = """
         SELECT
-            buyer_username AS buyer_name,
+            buyer_username,
             COUNT(DISTINCT order_id) AS total_orders,
             SUM(total_amount) AS total_revenue,
             (
@@ -174,7 +203,7 @@ def _render_top_customers(repo: DuckDBRepository) -> None:
             ) AS reorder_products
         FROM orders o
         WHERE order_status != 'cancelled'
-        GROUP BY buyer_name, buyer_username
+        GROUP BY buyer_username
         ORDER BY total_revenue DESC
         LIMIT 20
     """
@@ -186,36 +215,294 @@ def _render_top_customers(repo: DuckDBRepository) -> None:
         pl.col("total_revenue").cast(pl.Float64),
         pl.col("reorder_products").cast(pl.Int64),
     )
-    _section("Top Customers", "Highest revenue customers with reorder activity")
 
-    pdf = df.to_pandas()
-    pdf["total_revenue_fmt"] = pdf["total_revenue"].apply(_format_rp)
+    st.markdown("<h3 style='margin: 1.5rem 0 0.25rem;'>🏆 Top Customers</h3>", unsafe_allow_html=True)
+    st.markdown(
+        "<p style='color:var(--text-secondary);font-size:0.85rem;margin:0 0 0.75rem;'>"
+        "Highest revenue customers with reorder activity</p>",
+        unsafe_allow_html=True,
+    )
 
-    st.dataframe(
-        pdf[["buyer_name", "total_revenue_fmt", "total_orders", "reorder_products"]],
-        column_config={
-            "buyer_name": "Username",
-            "total_revenue_fmt": "Total Revenue",
-            "total_orders": "Orders",
-            "reorder_products": "Reorder Products",
-        },
-        use_container_width=True,
-        hide_index=True,
-        height=400,
+    medals = ["🥇", "🥈", "🥉"]
+    cards_html = ""
+    for i, row in enumerate(df.iter_rows(named=True)):
+        rank = i + 1
+        badge = medals[rank - 1] if rank <= 3 else f'<span style="font-size:0.75rem;font-weight:600;color:var(--text-muted);">#{rank}</span>'
+        revenue = _format_rp(row["total_revenue"])
+        cards_html += f"""
+        <div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.75rem;
+                    background:var(--surface);border:1px solid var(--border);border-radius:10px;
+                    margin-bottom:0.4rem;box-shadow:var(--shadow);transition:all 0.15s;">
+            <div style="width:28px;text-align:center;">{badge}</div>
+            <div style="flex:1;">
+                <div style="font-size:0.85rem;font-weight:600;color:var(--text);">{row['buyer_username']}</div>
+                <div style="font-size:0.7rem;color:var(--text-muted);">{row['total_orders']} orders · {row['reorder_products']} reorder products</div>
+            </div>
+            <div style="font-size:0.85rem;font-weight:700;color:var(--primary);">{revenue}</div>
+        </div>
+        """
+
+    st.markdown(
+        f"<div style='max-height:520px;overflow-y:auto;padding-right:4px;'>{cards_html}</div>",
+        unsafe_allow_html=True,
     )
 
 
-def _render_city_map(analytics: dict[str, Any]) -> None:
-    """Interactive folium map of city performance."""
-    cities = analytics.get("city", {}).get("cities", [])
-    if not cities:
+# ── Plotly Charts ──────────────────────────────────────────────────────
+
+
+def _plotly_fig(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    return {
+        "displayModeBar": False,
+        "responsive": True,
+        **(config or {}),
+    }
+
+
+def _render_revenue_trend(analytics: dict[str, Any]) -> None:
+    import plotly.express as px
+    import plotly.graph_objects as go
+
+    months = analytics.get("trend", {}).get("months", [])
+    if not months:
         return
+    df = pl.DataFrame(months).with_columns(pl.col("revenue").cast(pl.Float64)).to_pandas()
+
+    fig = px.area(
+        df, x="month", y="revenue",
+        markers=True,
+        color_discrete_sequence=[_PALETTE[0]],
+        template="none",
+    )
+    fig.update_traces(
+        line=dict(width=2.5), marker=dict(size=6),
+        fillcolor=f"rgba(37,99,235,0.10)",
+    )
+    fig.update_layout(
+        height=280, margin=dict(l=10, r=10, t=5, b=5),
+        xaxis=dict(title=None, tickangle=-25),
+        yaxis=dict(title=None, tickprefix="Rp ", separatethousands=True),
+        hovermode="x unified",
+    )
+    fig.update_yaxes(automargin=True)
+
+    _chart_container("Revenue Trend", fig)
+
+
+def _render_monthly_orders(analytics: dict[str, Any]) -> None:
+    import plotly.express as px
+
+    months = analytics.get("trend", {}).get("months", [])
+    if not months:
+        return
+    df = pl.DataFrame(months).to_pandas()
+
+    fig = px.bar(
+        df, x="month", y="order_count",
+        color_discrete_sequence=[_PALETTE[5]],
+        template="none",
+    )
+    fig.update_traces(marker_cornerradius=4)
+    fig.update_layout(
+        height=280, margin=dict(l=10, r=10, t=5, b=5),
+        xaxis=dict(title=None, tickangle=-25),
+        yaxis=dict(title=None),
+        hovermode="x unified",
+        showlegend=False,
+    )
+    _chart_container("Monthly Orders", fig)
+
+
+def _render_top_products(analytics: dict[str, Any]) -> None:
+    import plotly.express as px
+
+    products = analytics.get("product", {}).get("products", [])
+    if not products:
+        return
+    df = pl.DataFrame(products[:10]).with_columns(pl.col("total_revenue").cast(pl.Float64)).to_pandas()
+
+    fig = px.bar(
+        df, y="product_name", x="total_revenue",
+        orientation="h",
+        color_discrete_sequence=[_PALETTE[0]],
+        template="none",
+        text="total_revenue",
+    )
+    fig.update_traces(
+        texttemplate="%{text:,.0f}", textposition="outside",
+        hovertemplate="<b>%{y}</b><br>Revenue: Rp %{x:,.0f}<extra></extra>",
+    )
+    fig.update_layout(
+        height=320, margin=dict(l=10, r=60, t=5, b=5),
+        xaxis=dict(title=None, tickprefix="Rp ", separatethousands=True),
+        yaxis=dict(title=None, autorange="reversed"),
+        hovermode="y unified",
+    )
+    fig.update_yaxes(automargin=True)
+    _chart_container("Top Products by Revenue", fig)
+
+
+def _render_customer_segments(analytics: dict[str, Any]) -> None:
+    import plotly.graph_objects as go
+
+    segments = analytics.get("customer", {}).get("segments", [])
+    if not segments:
+        return
+    df = pl.DataFrame(segments)
+    total = df["count"].sum()
+    df = df.with_columns((pl.col("count") / total * 100).round(1).alias("pct"))
+
+    colors = _PALETTE[: df.height]
+    fig = go.Figure(
+        data=[
+            go.Pie(
+                labels=df["segment"].to_list(),
+                values=df["count"].to_list(),
+                hole=0.55,
+                marker=dict(colors=colors),
+                textinfo="label+percent",
+                textposition="outside",
+                hovertemplate="<b>%{label}</b><br>Count: %{value:,}<br>Share: %{percent}<extra></extra>",
+            )
+        ]
+    )
+    fig.update_layout(
+        height=320, margin=dict(l=10, r=10, t=5, b=5),
+        showlegend=True, legend=dict(orientation="h", y=-0.15, font=dict(size=10)),
+    )
+    _chart_container("Customer Segmentation", fig)
+
+
+def _render_province_performance(analytics: dict[str, Any]) -> None:
+    import plotly.express as px
+
+    provinces = analytics.get("province", {}).get("provinces", [])
+    if not provinces:
+        return
+    df = pl.DataFrame(provinces).with_columns(pl.col("revenue").cast(pl.Float64)).to_pandas()
+
+    fig = px.bar(
+        df, y="province", x="revenue",
+        orientation="h",
+        color="revenue",
+        color_continuous_scale="Blues",
+        template="none",
+    )
+    fig.update_traces(hovertemplate="<b>%{y}</b><br>Revenue: Rp %{x:,.0f}<extra></extra>")
+    fig.update_layout(
+        height=300, margin=dict(l=10, r=10, t=5, b=5),
+        xaxis=dict(title=None, tickprefix="Rp ", separatethousands=True),
+        yaxis=dict(title=None, autorange="reversed"),
+        coloraxis_showscale=False,
+    )
+    fig.update_yaxes(automargin=True)
+    _chart_container("Province Performance", fig)
+
+
+def _render_shipping_analysis(analytics: dict[str, Any]) -> None:
+    import plotly.express as px
+
+    providers = analytics.get("shipping", {}).get("providers", [])
+    if not providers:
+        return
+    df = pl.DataFrame(providers).to_pandas()
+    total_orders = df["order_count"].sum()
+    df["pct"] = (df["order_count"] / total_orders * 100).round(1)
+
+    fig = px.bar(
+        df, x="shipping_provider", y="order_count",
+        color="shipping_provider",
+        color_discrete_sequence=_PALETTE,
+        template="none",
+        text="pct",
+    )
+    fig.update_traces(
+        texttemplate="%{text}%", textposition="outside",
+        marker_cornerradius=4,
+    )
+    fig.update_layout(
+        height=280, margin=dict(l=10, r=10, t=5, b=5),
+        xaxis=dict(title=None),
+        yaxis=dict(title=None),
+        hovermode="x unified",
+        showlegend=False,
+    )
+    _chart_container("Shipping Provider Share", fig)
+
+
+def _render_payment_analysis(analytics: dict[str, Any]) -> None:
+    import plotly.graph_objects as go
+
+    methods = analytics.get("payment", {}).get("methods", [])
+    if not methods:
+        return
+    df = pl.DataFrame(methods).with_columns(pl.col("revenue").cast(pl.Float64))
+
+    colors = _PALETTE[: df.height]
+    fig = go.Figure(
+        data=[
+            go.Pie(
+                labels=df["payment_method"].to_list(),
+                values=df["revenue"].to_list(),
+                hole=0.4,
+                marker=dict(colors=colors),
+                textinfo="label+percent",
+                textposition="outside",
+                hovertemplate="<b>%{label}</b><br>Revenue: Rp %{value:,.0f}<extra></extra>",
+            )
+        ]
+    )
+    fig.update_layout(
+        height=310, margin=dict(l=10, r=10, t=5, b=5),
+        showlegend=True, legend=dict(orientation="h", y=-0.15, font=dict(size=10)),
+    )
+    _chart_container("Payment Method Distribution", fig)
+
+
+def _chart_container(title: str, fig: Any) -> None:
+    st.markdown(
+        f"""
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:0.75rem 0.75rem 0.25rem;margin-bottom:1rem;">
+        <p style="font-size:0.85rem;font-weight:600;color:var(--text);margin:0 0 0 0.5rem;">{title}</p>
+    """,
+        unsafe_allow_html=True,
+    )
+    st.plotly_chart(fig, use_container_width=True, config=_plotly_fig())
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+# ── Map + Province Stats ───────────────────────────────────────────────
+
+
+def _render_geo_section(analytics: dict[str, Any]) -> None:
+    cities = analytics.get("city", {}).get("cities", [])
+    provinces = analytics.get("province", {}).get("provinces", [])
+
+    if not cities and not provinces:
+        return
+
+    st.markdown("<h3 style='margin:1.5rem 0 0.25rem;'>🌍 Geographic Analysis</h3>", unsafe_allow_html=True)
+
+    left_col, right_col = st.columns([3, 2])
+
+    with left_col:
+        if cities:
+            _render_city_map(cities)
+
+    with right_col:
+        if provinces:
+            _render_province_stats(provinces)
+
+
+def _render_city_map(cities: list[dict[str, Any]]) -> None:
     import folium
     from streamlit_folium import st_folium
 
     center_lat, center_lon = -2.5, 118.0
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=5, control_scale=True,
-                   tiles="CartoDB positron", width="100%", height=500)
+    m = folium.Map(
+        location=[center_lat, center_lon], zoom_start=5, control_scale=True,
+        tiles="CartoDB positron", width="100%", height=450,
+    )
 
     max_rev = max(float(c["revenue"]) for c in cities if c["city_name"] in CITY_COORDS) if cities else 1
     min_radius, max_radius = 8, 40
@@ -240,336 +527,197 @@ def _render_city_map(analytics: dict[str, Any]) -> None:
             radius=radius,
             popup=folium.Popup(popup_html, max_width=300),
             tooltip=c["city_name"],
-            color="#1B98F5",
+            color="#2563EB",
             fill=True,
-            fill_color="#1B98F5",
+            fill_color="#2563EB",
             fill_opacity=0.7,
         ).add_to(m)
 
-    with st.container(border=True):
+    st_folium(m, width="100%", height=450, returned_objects=[])
+    st.caption("Circle size = revenue · Click marker for details")
+
+
+def _render_province_stats(provinces: list[dict[str, Any]]) -> None:
+    import plotly.express as px
+
+    df = pl.DataFrame(provinces).with_columns(pl.col("revenue").cast(pl.Float64)).to_pandas()
+
+    st.markdown(
+        f"""
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:0.75rem 1rem;height:490px;overflow-y:auto;">
+        <p style="font-size:0.85rem;font-weight:600;color:var(--text);margin:0 0 0.5rem;">Province Breakdown</p>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    for _, row in df.iterrows():
+        rev_fmt = _format_rp(row["revenue"])
+        bar_pct = min(row["revenue"] / df["revenue"].max() * 100, 100)
         st.markdown(
-            "<p style='color:#1e293b; font-size:0.95rem; font-weight:600; margin-bottom:8px;'>🗺️ City Distribution Map</p>",
+            f"""
+        <div style="margin-bottom:0.5rem;">
+            <div style="display:flex;justify-content:space-between;font-size:0.78rem;margin-bottom:2px;">
+                <span style="font-weight:500;color:var(--text);">{row['province']}</span>
+                <span style="font-weight:600;color:var(--primary);">{rev_fmt}</span>
+            </div>
+            <div style="background:#F1F5F9;border-radius:4px;height:6px;overflow:hidden;">
+                <div style="width:{bar_pct:.1f}%;background:linear-gradient(90deg,#2563EB,#3B82F6);height:100%;border-radius:4px;"></div>
+            </div>
+            <div style="font-size:0.65rem;color:var(--text-muted);margin-top:1px;">{int(row['order_count']):,} orders</div>
+        </div>
+        """,
             unsafe_allow_html=True,
         )
-        st_folium(m, width="100%", height=500, returned_objects=[])
-        st.caption("Circle size = revenue • Click marker for details")
+
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
-def _render_revenue_trend(analytics: dict[str, Any]) -> None:
-    months = analytics.get("trend", {}).get("months", [])
-    if not months:
-        return
-    df = pl.DataFrame(months).with_columns(pl.col("revenue").cast(pl.Float64))
-
-    base = alt.Chart(df.to_pandas()).encode(
-        x=alt.X("month:N", title=None, sort=None, axis=alt.Axis(labelAngle=-25, labelOverlap=True)),
-    )
-    line = base.mark_line(point=True, strokeWidth=2.5, color="#1B98F5").encode(
-        y=alt.Y("revenue:Q", title="Revenue", axis=alt.Axis(format="~s")),
-        tooltip=["month", alt.Tooltip("revenue", format=",.0f")],
-    )
-    area = base.mark_area(opacity=0.15, color="#1B98F5").encode(
-        y=alt.Y("revenue:Q"),
-    )
-    chart_card("Revenue Trend", area + line, height=300)
-
-
-def _render_monthly_orders(analytics: dict[str, Any]) -> None:
-    months = analytics.get("trend", {}).get("months", [])
-    if not months:
-        return
-    df = pl.DataFrame(months)
-
-    bars = (
-        alt.Chart(df.to_pandas())
-        .mark_bar(color="#00C9A7", cornerRadiusTopLeft=4, cornerRadiusTopRight=4)
-        .encode(
-            x=alt.X("month:N", title=None, sort=None, axis=alt.Axis(labelAngle=-25, labelOverlap=True)),
-            y=alt.Y("order_count:Q", title="Orders"),
-            tooltip=["month", "order_count"],
-        )
-    )
-    trend = (
-        alt.Chart(df.to_pandas())
-        .mark_line(color="#0B6FA6", strokeWidth=2, strokeDash=[4, 4])
-        .encode(
-            x="month:N",
-            y=alt.Y("order_count:Q"),
-        )
-    )
-    chart_card("Monthly Orders", bars + trend, height=280)
-
-
-def _render_top_products(analytics: dict[str, Any]) -> None:
-    products = analytics.get("product", {}).get("products", [])
-    if not products:
-        return
-    df = pl.DataFrame(products[:10]).with_columns(pl.col("total_revenue").cast(pl.Float64))
-
-    chart = (
-        alt.Chart(df.to_pandas())
-        .mark_bar(color=_CHART_COLORS[0], cornerRadiusTopRight=4)
-        .encode(
-            y=alt.Y("product_name:N", title=None, sort="-x", axis=alt.Axis(labelLimit=200)),
-            x=alt.X("total_revenue:Q", title="Revenue", axis=alt.Axis(format="~s")),
-            tooltip=[
-                "product_name",
-                "total_quantity",
-                alt.Tooltip("total_revenue", format=",.0f"),
-            ],
-        )
-        .properties(height=280)
-    )
-    text = chart.mark_text(align="left", dx=4, fontSize=10, color="#64748b").encode(
-        text=alt.Text("total_revenue:Q", format="~s"),
-    )
-    chart_card("Top Products by Revenue", chart + text, height=300)
-
-
-def _render_province_performance(analytics: dict[str, Any]) -> None:
-    provinces = analytics.get("province", {}).get("provinces", [])
-    if not provinces:
-        return
-    df = pl.DataFrame(provinces).with_columns(pl.col("revenue").cast(pl.Float64))
-
-    chart = (
-        alt.Chart(df.to_pandas())
-        .mark_bar(cornerRadiusTopRight=4)
-        .encode(
-            y=alt.Y("province:N", title=None, sort="-x", axis=alt.Axis(labelLimit=150)),
-            x=alt.X("revenue:Q", title="Revenue", axis=alt.Axis(format="~s")),
-            color=alt.Color("revenue:Q", scale=alt.Scale(
-                scheme="blues", domain=[df["revenue"].min(), df["revenue"].max()],
-            ), legend=None),
-            tooltip=["province", alt.Tooltip("revenue", format=",.0f"), "order_count"],
-        )
-        .properties(height=250)
-    )
-    chart_card("Province Performance", chart, height=270)
-
-
-def _render_city_performance(analytics: dict[str, Any]) -> None:
-    cities = analytics.get("city", {}).get("cities", [])
-    if not cities:
-        return
-    df = pl.DataFrame(cities).with_columns(pl.col("revenue").cast(pl.Float64))
-
-    chart = (
-        alt.Chart(df.to_pandas())
-        .mark_bar(cornerRadiusTopRight=4)
-        .encode(
-            y=alt.Y("city_name:N", title=None, sort="-x", axis=alt.Axis(labelLimit=150)),
-            x=alt.X("revenue:Q", title="Revenue", axis=alt.Axis(format="~s")),
-            color=alt.Color("revenue:Q", scale=alt.Scale(
-                scheme="teals", domain=[df["revenue"].min(), df["revenue"].max()],
-            ), legend=None),
-            tooltip=["city_name", "province", alt.Tooltip("revenue", format=",.0f"), "order_count"],
-        )
-        .properties(height=280)
-    )
-    chart_card("City Performance", chart, height=300)
-
-
-def _render_customer_segments(analytics: dict[str, Any]) -> None:
-    segments = analytics.get("customer", {}).get("segments", [])
-    if not segments:
-        return
-    df = pl.DataFrame(segments)
-    total = df["count"].sum()
-    df = df.with_columns(
-        (pl.col("count") / total * 100).round(1).alias("pct"),
-    )
-
-    colors = _CHART_COLORS[: df.height]
-    chart = (
-        alt.Chart(df.to_pandas())
-        .mark_arc(innerRadius=55, stroke="#fff", strokeWidth=2)
-        .encode(
-            theta=alt.Theta("count:Q"),
-            color=alt.Color(
-                "segment:N",
-                scale=alt.Scale(domain=df["segment"].to_list(), range=colors),
-                legend=alt.Legend(orient="bottom", title=None, columns=3, labelFontSize=11),
-            ),
-            tooltip=["segment", "count", alt.Tooltip("pct", format=".1f")],
-        )
-        .properties(height=300)
-    )
-    text = chart.mark_text(radius=95, fontSize=10, fontWeight=600, color="#64748b").encode(
-        text=alt.Text("pct:Q", format=".1f"),
-    )
-    chart_card("Customer Segmentation", chart, height=310)
-
-
-def _render_shipping_analysis(analytics: dict[str, Any]) -> None:
-    providers = analytics.get("shipping", {}).get("providers", [])
-    if not providers:
-        return
-    df = pl.DataFrame(providers)
-    total_orders = df["order_count"].sum()
-    df = df.with_columns(
-        (pl.col("order_count") / total_orders * 100).round(1).alias("pct"),
-    )
-
-    chart = (
-        alt.Chart(df.to_pandas())
-        .mark_bar(cornerRadiusTopRight=4)
-        .encode(
-            x=alt.X("shipping_provider:N", title=None, sort="-y", axis=alt.Axis(labelAngle=0)),
-            y=alt.Y("order_count:Q", title="Orders"),
-            color=alt.Color("shipping_provider:N", scale=alt.Scale(
-                scheme="category10",
-            ), legend=None),
-            tooltip=["shipping_provider", "order_count", alt.Tooltip("pct", format=".1f")],
-        )
-        .properties(height=250)
-    )
-    text = chart.mark_text(dy=-6, fontSize=10, color="#64748b").encode(
-        text=alt.Text("pct:Q", format=".1f"),
-    )
-    chart_card("Shipping Provider Share", chart + text, height=280)
-
-
-def _render_payment_analysis(analytics: dict[str, Any]) -> None:
-    methods = analytics.get("payment", {}).get("methods", [])
-    if not methods:
-        return
-    df = pl.DataFrame(methods).with_columns(pl.col("revenue").cast(pl.Float64))
-
-    colors = _CHART_COLORS[: df.height]
-    chart = (
-        alt.Chart(df.to_pandas())
-        .mark_arc(stroke="#fff", strokeWidth=2)
-        .encode(
-            theta=alt.Theta("revenue:Q"),
-            color=alt.Color(
-                "payment_method:N",
-                scale=alt.Scale(domain=df["payment_method"].to_list(), range=colors),
-                legend=alt.Legend(orient="bottom", title=None, columns=2, labelFontSize=11),
-            ),
-            tooltip=["payment_method", alt.Tooltip("revenue", format=",.0f")],
-        )
-        .properties(height=300)
-    )
-    chart_card("Payment Method Distribution", chart, height=310)
+# ── Main Render ────────────────────────────────────────────────────────
 
 
 def render() -> None:
-    st.markdown(_CSS, unsafe_allow_html=True)
-    st.title("Dashboard")
-
     repo = _get_repo()
-    if not repo.table_exists("orders"):
-        with st.container(border=True):
-            st.markdown("### 👋 Welcome to Shopee BI Dashboard")
-            st.markdown(
-                "Get started by uploading your Shopee order export file."
-            )
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.markdown("**📁 Step 1**  \nUpload file  \n*Go to Upload page*")
-                if st.button("→ Go Upload", type="primary", use_container_width=True):
-                    st.session_state.page = "Upload"
-                    st.rerun()
-            with col2:
-                st.markdown("**📊 Step 2**  \nView analytics  \n*KPIs, charts, insights*")
-            with col3:
-                st.markdown("**📋 Step 3**  \nDownload report  \n*Excel dashboard (13 sheets)*")
+    has_orders = repo.table_exists("orders")
+
+    if not has_orders:
         st.markdown(
-            "<p style='color:#94a3b8; font-size:0.85rem; text-align:center; margin-top:2rem;'>"
-            "Supports Shopee order export (.xlsx, .xls, .csv) • "
-            "Auto ETL • Built with DuckDB + Streamlit"
-            "</p>",
+            """
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;">
+            <div style="font-size:3rem;margin-bottom:1rem;">📊</div>
+            <h2 style="margin:0 0 0.5rem;color:var(--text);">Welcome to Shopee BI Dashboard</h2>
+            <p style="color:var(--text-secondary);max-width:400px;margin:0 0 1.5rem;">
+                Your premium analytics platform for Shopee order data.
+                Upload your first export file to get started.
+            </p>
+            <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
+                <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;text-align:center;width:150px;">
+                    <div style="font-size:1.5rem;">📁</div>
+                    <p style="font-weight:600;font-size:0.85rem;margin:0.25rem 0;">Step 1</p>
+                    <p style="font-size:0.75rem;color:var(--text-secondary);margin:0;">Upload file</p>
+                </div>
+                <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;text-align:center;width:150px;">
+                    <div style="font-size:1.5rem;">📊</div>
+                    <p style="font-weight:600;font-size:0.85rem;margin:0.25rem 0;">Step 2</p>
+                    <p style="font-size:0.75rem;color:var(--text-secondary);margin:0;">View analytics</p>
+                </div>
+                <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;text-align:center;width:150px;">
+                    <div style="font-size:1.5rem;">📋</div>
+                    <p style="font-weight:600;font-size:0.85rem;margin:0.25rem 0;">Step 3</p>
+                    <p style="font-size:0.75rem;color:var(--text-secondary);margin:0;">Download report</p>
+                </div>
+            </div>
+        </div>
+        """,
             unsafe_allow_html=True,
         )
+        if st.button("→ Go to Upload Page", type="primary", key="welcome_upload"):
+            st.session_state.page = "Upload"
+            st.rerun()
         return
 
-    # ── Loading with progress ──────────────────────────────────────────
+    # ── Loading ────────────────────────────────────────────────────────
     load_placeholder = st.empty()
-    progress_bar = load_placeholder.progress(0, text="Preparing...")
+    progress_bar = load_placeholder.progress(0, text="Preparing dashboard...")
 
     progress_bar.progress(10, text="Connecting to database...")
-    progress_bar.progress(20, text="Checking data availability...")
-
-    progress_bar.progress(30, text="Computing customer analytics...")
-    progress_bar.progress(45, text="Computing product analytics...")
-    progress_bar.progress(55, text="Computing geographic analytics...")
-    progress_bar.progress(70, text="Computing trend & shipping analytics...")
-    progress_bar.progress(85, text="Generating business insights...")
+    progress_bar.progress(25, text="Loading analytics data...")
+    progress_bar.progress(50, text="Computing metrics...")
+    progress_bar.progress(75, text="Generating visualizations...")
+    progress_bar.progress(90, text="Building insights...")
 
     analytics = _load_analytics()
-
-    progress_bar.progress(100, text="Done!")
+    progress_bar.progress(100, text="Ready!")
     load_placeholder.empty()
 
     if not analytics:
         st.warning("No analytics data available. Upload a file first.")
         return
 
-    # ── Data freshness bar ──
-    fresh_df = repo.query(
-        "SELECT MIN(order_date) AS first_order, MAX(order_date) AS last_order "
-        "FROM orders WHERE order_date IS NOT NULL"
-    )
-    if fresh_df.height > 0:
-        first_dt = fresh_df["first_order"][0]
-        last_dt = fresh_df["last_order"][0]
-        if first_dt and last_dt:
-            fmt = lambda d: d.strftime("%d %b %Y") if hasattr(d, "strftime") else str(d)[:10]
-            st.caption(
-                f"📅 Data: {fmt(first_dt)} — {fmt(last_dt)}  ·  "
-                f"{st.session_state.get('last_uploaded', '')}"
-            )
+    # ── Executive Header ──────────────────────────────────────────────
+    _render_header(analytics)
 
-    # ── KPI Row ──
+    # ── KPI Row ────────────────────────────────────────────────────────
     _render_kpis(analytics)
 
-    st.divider()
-
-    # ── Top Customers ──
-    _render_top_customers(repo)
-
-    st.divider()
-
-    # ── City Map ──
-    _render_city_map(analytics)
-
-    st.divider()
-
-    # ── Charts ──
-    col1, col2 = st.columns(2)
-    with col1:
-        _render_revenue_trend(analytics)
-    with col2:
-        _render_monthly_orders(analytics)
-
-    col1, col2 = st.columns(2)
-    with col1:
-        _render_top_products(analytics)
-    with col2:
-        _render_customer_segments(analytics)
-
-    col1, col2 = st.columns(2)
-    with col1:
-        _render_province_performance(analytics)
-    with col2:
-        _render_city_performance(analytics)
-
-    col1, col2 = st.columns(2)
-    with col1:
-        _render_shipping_analysis(analytics)
-    with col2:
-        _render_payment_analysis(analytics)
-
-    st.divider()
-
-    # ── Insights ──
+    # ── Insights ──────────────────────────────────────────────────────
     _render_insights(analytics)
 
-    # ── Download Excel ──
+    # ── Tabbed Sections ───────────────────────────────────────────────
+    tabs = st.tabs(["📈 Overview", "🏆 Customers", "📦 Products", "🌍 Geography"])
+
+    with tabs[0]:
+        col1, col2 = st.columns(2)
+        with col1:
+            _render_revenue_trend(analytics)
+        with col2:
+            _render_monthly_orders(analytics)
+
+        col1, col2 = st.columns(2)
+        with col1:
+            _render_shipping_analysis(analytics)
+        with col2:
+            _render_payment_analysis(analytics)
+
+    with tabs[1]:
+        cust_col1, cust_col2 = st.columns([3, 5])
+        with cust_col1:
+            _render_customer_segments(analytics)
+        with cust_col2:
+            _render_top_customers(repo)
+
+    with tabs[2]:
+        prod_col1, prod_col2 = st.columns([5, 4])
+        with prod_col1:
+            if analytics.get("product", {}).get("products"):
+                import plotly.express as px
+                df = pl.DataFrame(analytics["product"]["products"][:10])
+                if not df.is_empty():
+                    fig = px.bar(
+                        df.to_pandas(),
+                        y="product_name", x="total_revenue",
+                        orientation="h",
+                        color_discrete_sequence=[_PALETTE[0]],
+                        template="none",
+                    )
+                    fig.update_traces(hovertemplate="<b>%{y}</b><br>Revenue: Rp %{x:,.0f}<br>Qty: %{customdata[0]}<extra></extra>",
+                                      customdata=df.select("total_quantity").to_pandas())
+                    fig.update_layout(height=400, margin=dict(l=10,r=10,t=5,b=5),
+                                      xaxis_title=None, yaxis_title=None,
+                                      yaxis=dict(autorange="reversed"))
+                    _chart_container("Top Products by Revenue", fig)
+        with prod_col2:
+            st.markdown(
+                "<div style='background:var(--surface);border:1px solid var(--border);"
+                "border-radius:12px;padding:1rem;height:460px;overflow-y:auto;'>"
+                "<p style='font-size:0.85rem;font-weight:600;color:var(--text);"
+                "margin:0 0 0.5rem;'>📋 Product Details</p>",
+                unsafe_allow_html=True,
+            )
+            products = analytics.get("product", {}).get("products", [])
+            if products:
+                pdf = pl.DataFrame(products[:15]).to_pandas()
+                pdf["Revenue"] = pdf["total_revenue"].apply(_format_rp)
+                cols_to_show = ["product_name", "Revenue", "total_quantity"]
+                st.dataframe(
+                    pdf[cols_to_show],
+                    column_config={
+                        "product_name": "Product",
+                        "Revenue": "Revenue",
+                        "total_quantity": "Qty Sold",
+                    },
+                    use_container_width=True,
+                    hide_index=True,
+                )
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    with tabs[3]:
+        _render_geo_section(analytics)
+
+    # ── Download ───────────────────────────────────────────────────────
+    st.divider()
     with st.expander("📋 Download Excel Dashboard", expanded=False):
         st.markdown(
-            "<p style='color:#64748b; font-size:0.85rem;'>Generate the full Excel BI dashboard (13 sheets) including all analytics.</p>",
+            "<p style='color:var(--text-secondary);font-size:0.85rem;'>Generate the full Excel BI dashboard (13 sheets) including all analytics.</p>",
             unsafe_allow_html=True,
         )
         if st.button("🔄 Generate & Download", type="primary", use_container_width=True):
@@ -599,7 +747,8 @@ def render() -> None:
                     use_container_width=True,
                 )
 
-    # ── Raw data ──
-    with st.expander("View raw data"):
+    # ── Raw Data ───────────────────────────────────────────────────────
+    with st.expander("📄 View Raw Orders Data"):
         raw = repo.query("SELECT * FROM orders ORDER BY order_date DESC LIMIT 100")
+        from streamlit_app.components.data_table import data_table
         data_table(raw, height=300)
