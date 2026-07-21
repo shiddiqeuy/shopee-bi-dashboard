@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+:root {
+  --primary: #2563eb;
+  --primary-light: #3b82f6;
+  --primary-dark: #1d4ed8;
+  --secondary: #64748b;
+  --accent: #06b6d4;
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --danger: #dc2626;
+  --background: #f8fafc;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+}
+
+body {
+  background: var(--background);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+@theme inline {
+  --color-primary: var(--primary);
+  --color-primary-light: var(--primary-light);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+}
+
+.kpi-card {
+  @apply bg-white rounded-xl border border-gray-200 p-5 transition-shadow hover:shadow-md;
+}
+
+.kpi-value {
+  @apply text-3xl font-bold text-gray-900 mt-2;
+}
+
+.kpi-label {
+  @apply text-sm font-medium text-gray-500 uppercase tracking-wide;
+}
+
+.chart-container {
+  @apply bg-white rounded-xl border border-gray-200 p-5;
+}
+
+.page-header {
+  @apply text-2xl font-bold text-gray-900 mb-6;
+}
