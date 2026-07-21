@@ -39,21 +39,32 @@ def _parse_indo_number(text: str) -> str:
     English format:    comma = thousands sep  (e.g. '51,410')
                        dot   = decimal sep    (e.g. '51.5')
 
-    Auto-detection: if a comma is present → Indonesian format.
-    If only dots exist and the last group after the final dot has
-    exactly 3 digits → Indonesian format (whole number).
-    Otherwise → English/standard format.
+    Auto-detection:
+    - Both comma and dot present → Indonesian (remove dots, replace comma)
+    - Only comma present:
+        * Last group after final comma has 2 digits → Indonesian decimal
+        * Otherwise → English thousands (remove commas)
+    - Only dot present:
+        * Last group after final dot has 3 digits → Indonesian thousands
+        * Otherwise → English decimal
     """
     cleaned = text.strip()
     has_comma = "," in cleaned
     has_dot = "." in cleaned
 
-    if has_comma:
-        # Explicit Indonesian format: remove dots, replace comma with dot
+    if has_comma and has_dot:
+        # Mixed: dots = thousands, comma = decimal
         return cleaned.replace(".", "").replace(",", ".")
+    if has_comma:
+        parts = cleaned.split(",")
+        # 2 digits after last comma = likely Indonesian decimal
+        if len(parts) > 1 and len(parts[-1]) == 2 and parts[-1].isdigit():
+            return cleaned.replace(".", "").replace(",", ".")
+        # Otherwise English thousands: remove commas
+        return cleaned.replace(",", "")
     if has_dot:
         parts = cleaned.split(".")
-        # If the last group is exactly 3 digits, likely Indonesian thousands
+        # Last group exactly 3 digits = likely Indonesian thousands
         if len(parts) > 1 and len(parts[-1]) == 3 and all(p.isdigit() for p in parts):
             return cleaned.replace(".", "")
     return cleaned

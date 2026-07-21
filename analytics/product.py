@@ -123,28 +123,30 @@ class ProductAnalytics(AnalyticsModule):
             "pareto_ratio": round(pareto_df.height / df.height * 100, 2) if df.height else 0,
         }
 
-    def _fast_moving(self, repo: Repository) -> list[dict[str, Any]]:
-        days = ANALYTICS["fast_moving_days"]
-        sql = f"""
+    _SQL_FAST_MOVING = """
         SELECT product_name, SUM(quantity) AS qty_sold
         FROM orders
         WHERE order_status != 'cancelled'
-          AND order_date >= CURRENT_DATE - INTERVAL '{days} days'
+          AND order_date >= CURRENT_DATE - $days
         GROUP BY product_name
         ORDER BY qty_sold DESC
         LIMIT 10
         """
-        return repo.query(sql).to_dicts()
+
+    _SQL_SLOW_MOVING = """
+        SELECT product_name, SUM(quantity) AS qty_sold
+        FROM orders
+        WHERE order_status != 'cancelled'
+        GROUP BY product_name
+        HAVING MAX(order_date) < CURRENT_DATE - $days
+        ORDER BY qty_sold DESC
+        LIMIT 10
+        """
+
+    def _fast_moving(self, repo: Repository) -> list[dict[str, Any]]:
+        days = ANALYTICS["fast_moving_days"]
+        return repo.query(self._SQL_FAST_MOVING, {"days": days}).to_dicts()
 
     def _slow_moving(self, repo: Repository) -> list[dict[str, Any]]:
         days = ANALYTICS["slow_moving_days"]
-        sql = f"""
-        SELECT product_name, SUM(quantity) AS qty_sold
-        FROM orders
-        WHERE order_status != 'cancelled'
-        GROUP BY product_name
-        HAVING MAX(order_date) < CURRENT_DATE - INTERVAL '{days} days'
-        ORDER BY qty_sold DESC
-        LIMIT 10
-        """
-        return repo.query(sql).to_dicts()
+        return repo.query(self._SQL_SLOW_MOVING, {"days": days}).to_dicts()
