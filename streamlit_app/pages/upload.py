@@ -142,8 +142,7 @@ def _render_upload_section() -> None:
 
 def _render_file_management() -> None:
     """List, delete, and re-run ETL on existing files in INPUT_DIR."""
-    st.divider()
-    st.markdown("### File Management")
+    st.markdown("### Existing Files")
     st.markdown(
         "<p style='color:#64748b;'>Manage files in the input directory.</p>",
         unsafe_allow_html=True,
@@ -212,5 +211,6 @@ def _run_etl_on_file(filename: str) -> None:
 def render() -> None:
     st.title("Upload Data")
 
-    _render_upload_section()
     _render_file_management()
+    st.divider()
+    _render_upload_section()
