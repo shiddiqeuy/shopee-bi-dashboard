@@ -19,7 +19,7 @@ if str(_PROJECT_ROOT) not in sys.path:
 
 from database.connection import get_connection
 from database.repository import DuckDBRepository
-from streamlit_app.pages import dashboard_page, upload, reports, settings
+from streamlit_app.pages import dashboard_page, upload, settings
 
 st.set_page_config(
     page_title="Shopee BI Dashboard",
@@ -75,7 +75,6 @@ with st.sidebar:
     pages = {
         "Dashboard": ("📈", "Analytics & charts"),
         "Upload": ("📁", "Upload & manage files"),
-        "Reports": ("📋", "Generate Excel dashboard"),
         "Settings": ("⚙️", "Configuration"),
     }
 
@@ -113,10 +112,9 @@ with st.sidebar:
     with st.expander("💡 Quick Guide", expanded=False):
         st.markdown(
             """
-**1. Upload** – Upload Shopee order export (`.xlsx`/`.csv`) → auto ETL  
-**2. Dashboard** – View KPIs, charts, and customer insights  
-**3. Reports** – Download full Excel dashboard (13 sheets)  
-**4. Settings** – System info, parameters, data management
+**1. Upload** – Upload file(s) → auto ETL  
+**2. Dashboard** – KPIs, charts, customer insights, download Excel  
+**3. Settings** – System info, parameters, data management
 """
         )
 
@@ -130,7 +128,5 @@ if page == "Dashboard":
     dashboard_page.render()
 elif page == "Upload":
     upload.render()
-elif page == "Reports":
-    reports.render()
 elif page == "Settings":
     settings.render()

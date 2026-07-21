@@ -5,6 +5,7 @@ Mobile-responsive with stacked layout on small screens.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Optional
 
 import altair as alt
@@ -509,6 +510,39 @@ def render() -> None:
 
     # ── Insights ──
     _render_insights(analytics)
+
+    # ── Download Excel ──
+    with st.expander("📋 Download Excel Dashboard", expanded=False):
+        st.markdown(
+            "<p style='color:#64748b; font-size:0.85rem;'>Generate the full Excel BI dashboard (13 sheets) including all analytics.</p>",
+            unsafe_allow_html=True,
+        )
+        if st.button("🔄 Generate & Download", type="primary", use_container_width=True):
+            with st.status("Generating Excel dashboard...", expanded=True) as status:
+                from streamlit_app.services.analytics_service import AnalyticsService
+                from streamlit_app.services.dashboard_service import DashboardService
+
+                st.write("📊 Computing analytics...")
+                analytics_svc = AnalyticsService(repo)
+                analytics_data = analytics_svc.compute_all()
+                st.write("✅ Analytics computed")
+
+                st.write("📝 Building Excel workbook...")
+                dashboard_svc = DashboardService(repo)
+                path = dashboard_svc.generate(analytics_data)
+                st.write(f"✅ Dashboard saved")
+
+                status.update(label="Dashboard generated!", state="complete")
+
+            with open(path, "rb") as f:
+                st.download_button(
+                    label="📥 Download Excel Dashboard",
+                    data=f,
+                    file_name=Path(path).name,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    type="primary",
+                    use_container_width=True,
+                )
 
     # ── Raw data ──
     with st.expander("View raw data"):
