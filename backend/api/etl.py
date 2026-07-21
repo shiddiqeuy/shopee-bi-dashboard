@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter, Depends, UploadFile, File
 
 from database.repository import DuckDBRepository
@@ -13,8 +15,8 @@ router = APIRouter()
 async def upload_file(file: UploadFile = File(...), repo: DuckDBRepository = Depends(get_repo)):
     service = ETLService(repo)
     contents = await file.read()
-    saved_path = service.save_upload(contents, file.filename)
-    result = service.run(str(saved_path))
+    saved_path = await asyncio.to_thread(service.save_upload, contents, file.filename)
+    result = await asyncio.to_thread(service.run, str(saved_path))
     return {
         "filename": file.filename,
         "rows_loaded": result.get("rows_loaded", 0),
