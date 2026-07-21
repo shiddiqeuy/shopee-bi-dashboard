@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter, Depends
 
 from database.repository import DuckDBRepository
@@ -10,11 +12,11 @@ router = APIRouter()
 
 
 @router.get("/compute")
-def compute_analytics(repo: DuckDBRepository = Depends(get_repo)):
+async def compute_analytics(repo: DuckDBRepository = Depends(get_repo)):
     service = AnalyticsService(repo)
-    results = service.compute_all()
+    results = await asyncio.to_thread(service.compute_all)
 
-    raw_df = repo.query("SELECT * FROM orders LIMIT 5000")
+    raw_df = await asyncio.to_thread(repo.query, "SELECT * FROM orders LIMIT 5000")
     results["raw_data"] = raw_df.to_dicts()
 
     return results

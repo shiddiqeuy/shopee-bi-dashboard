@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse
 
@@ -13,12 +15,12 @@ router = APIRouter()
 
 
 @router.get("/download")
-def download_dashboard(repo: DuckDBRepository = Depends(get_repo)):
+async def download_dashboard(repo: DuckDBRepository = Depends(get_repo)):
     analytics_service = AnalyticsService(repo)
-    results = analytics_service.compute_all()
+    results = await asyncio.to_thread(analytics_service.compute_all)
 
     dashboard_service = DashboardService(repo)
-    path = dashboard_service.generate(results)
+    path = await asyncio.to_thread(dashboard_service.generate, results)
 
     return FileResponse(
         path,
