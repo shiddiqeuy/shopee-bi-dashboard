@@ -130,6 +130,7 @@ def _render_upload_section() -> None:
         )
 
         st.session_state["etl_completed"] = True
+        st.cache_data.clear()
 
         last_name = new_files[-1].name if new_files else ""
         st.session_state["last_uploaded"] = f"{success_count} files (last: {last_name})"
@@ -202,6 +203,7 @@ def _run_etl_on_file(filename: str) -> None:
             status.update(label="ETL complete!", state="complete")
 
             st.session_state["etl_completed"] = True
+            st.cache_data.clear()
             st.session_state["etl_result"] = result
             st.session_state["last_uploaded"] = filename
 
