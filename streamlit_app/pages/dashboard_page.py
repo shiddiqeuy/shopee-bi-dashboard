@@ -409,7 +409,28 @@ def render() -> None:
 
     repo = _get_repo()
     if not repo.table_exists("orders"):
-        st.info("No data yet. Go to **Upload** to add order data.", icon="📁")
+        with st.container(border=True):
+            st.markdown("### 👋 Welcome to Shopee BI Dashboard")
+            st.markdown(
+                "Get started by uploading your Shopee order export file."
+            )
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown("**📁 Step 1**  \nUpload file  \n*Go to Upload page*")
+                if st.button("→ Go Upload", type="primary", use_container_width=True):
+                    st.session_state.page = "Upload"
+                    st.rerun()
+            with col2:
+                st.markdown("**📊 Step 2**  \nView analytics  \n*KPIs, charts, insights*")
+            with col3:
+                st.markdown("**📋 Step 3**  \nDownload report  \n*Excel dashboard (13 sheets)*")
+        st.markdown(
+            "<p style='color:#94a3b8; font-size:0.85rem; text-align:center; margin-top:2rem;'>"
+            "Supports Shopee order export (.xlsx, .xls, .csv) • "
+            "Auto ETL • Built with DuckDB + Streamlit"
+            "</p>",
+            unsafe_allow_html=True,
+        )
         return
 
     # ── Loading with progress ──────────────────────────────────────────
@@ -433,6 +454,21 @@ def render() -> None:
     if not analytics:
         st.warning("No analytics data available. Upload a file first.")
         return
+
+    # ── Data freshness bar ──
+    fresh_df = repo.query(
+        "SELECT MIN(order_date) AS first_order, MAX(order_date) AS last_order "
+        "FROM orders WHERE order_date IS NOT NULL"
+    )
+    if fresh_df.height > 0:
+        first_dt = fresh_df["first_order"][0]
+        last_dt = fresh_df["last_order"][0]
+        if first_dt and last_dt:
+            fmt = lambda d: d.strftime("%d %b %Y") if hasattr(d, "strftime") else str(d)[:10]
+            st.caption(
+                f"📅 Data: {fmt(first_dt)} — {fmt(last_dt)}  ·  "
+                f"{st.session_state.get('last_uploaded', '')}"
+            )
 
     # ── KPI Row ──
     _render_kpis(analytics)

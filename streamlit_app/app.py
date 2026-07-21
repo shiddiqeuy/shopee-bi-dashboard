@@ -8,15 +8,17 @@ session state initialization, and page routing.
 from __future__ import annotations
 
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import streamlit as st
 
-# Ensure project root is on sys.path
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
+from database.connection import get_connection
+from database.repository import DuckDBRepository
 from streamlit_app.pages import dashboard_page, upload, reports, settings
 
 st.set_page_config(
@@ -40,6 +42,25 @@ for key, value in _DEFAULTS.items():
     if key not in st.session_state:
         st.session_state[key] = value
 
+
+def _data_freshness_info() -> str:
+    """Return last order date from DB, or empty string."""
+    try:
+        repo = DuckDBRepository(get_connection())
+        if repo.table_exists("orders"):
+            df = repo.query(
+                "SELECT MAX(order_date) AS last_order FROM orders WHERE order_date IS NOT NULL"
+            )
+            if df.height > 0 and df["last_order"][0] is not None:
+                dt = df["last_order"][0]
+                if hasattr(dt, "strftime"):
+                    return dt.strftime("%d %b %Y")
+                return str(dt)[:10]
+    except Exception:
+        pass
+    return ""
+
+
 # ── Sidebar ────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown(
@@ -50,34 +71,54 @@ with st.sidebar:
 
     st.divider()
 
+    # ── Navigation ──
     pages = {
-        "Dashboard": "📈",
-        "Upload": "📁",
-        "Reports": "📋",
-        "Settings": "⚙️",
+        "Dashboard": ("📈", "Analytics & charts"),
+        "Upload": ("📁", "Upload & manage files"),
+        "Reports": ("📋", "Generate Excel dashboard"),
+        "Settings": ("⚙️", "Configuration"),
     }
 
-    for name, icon in pages.items():
+    for name, (icon, desc) in pages.items():
+        active = st.session_state.page == name
+        label = f"{icon} **{name}**" if not active else f"{icon} **{name}**"
         if st.button(
-            f"{icon} {name}",
+            label,
             key=f"nav_{name}",
             use_container_width=True,
-            type="secondary" if st.session_state.page != name else "primary",
+            type="primary" if active else "secondary",
+            help=desc,
         ):
             st.session_state.page = name
             st.rerun()
 
     st.divider()
 
-    # Status section
-    st.markdown("### Status")
+    # ── Data Status ──
+    st.markdown("##### Data Status")
     if st.session_state.get("etl_completed"):
         last = st.session_state.get("last_uploaded", "unknown")
-        st.markdown(f"✅ **Data loaded**")
+        st.markdown(f"✅ **Loaded**")
         st.caption(f"File: {last}")
+        freshness = _data_freshness_info()
+        if freshness:
+            st.caption(f"Last order: {freshness}")
     else:
         st.markdown("⏳ **No data**")
         st.caption("Upload a file to begin")
+
+    st.divider()
+
+    # ── Quick Guide ──
+    with st.expander("💡 Quick Guide", expanded=False):
+        st.markdown(
+            """
+**1. Upload** – Upload Shopee order export (`.xlsx`/`.csv`) → auto ETL  
+**2. Dashboard** – View KPIs, charts, and customer insights  
+**3. Reports** – Download full Excel dashboard (13 sheets)  
+**4. Settings** – System info, parameters, data management
+"""
+        )
 
     st.divider()
     st.caption("v1.0.0")
