@@ -31,15 +31,18 @@ class ChartCard:
         self.help_text = help_text
 
     def render(self) -> None:
-        with st.container(border=True):
-            st.markdown(
-                f'<p class="chart-title">{self.title}</p>',
-                unsafe_allow_html=True,
-            )
-            if self.help_text:
-                st.caption(self.help_text)
-            st.plotly_chart(
-                self.fig,
-                use_container_width=True,
-                config={"displayModeBar": _DISPLAY_MODE_BAR, "responsive": True},
-            )
+        try:
+            with st.container(border=True):
+                st.markdown(
+                    f'<p class="chart-title">{self.title}</p>',
+                    unsafe_allow_html=True,
+                )
+                if self.help_text:
+                    st.caption(self.help_text)
+                st.plotly_chart(
+                    self.fig,
+                    use_container_width=True,
+                    config={"displayModeBar": _DISPLAY_MODE_BAR, "responsive": True},
+                )
+        except Exception as e:
+            st.error(f"Failed to render ChartCard: {e}")

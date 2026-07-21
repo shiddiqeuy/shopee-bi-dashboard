@@ -323,7 +323,10 @@ def _render_shipping_analysis(analytics: dict[str, Any]) -> None:
     df["pct"] = (df["order_count"] / total_orders * 100).round(1)
 
     fig = px.bar(
-        df, x="shipping_provider", y="order_count",
+        df,
+        x="order_count",
+        y="shipping_provider",
+        orientation="h",
         color="shipping_provider",
         color_discrete_sequence=_PALETTE,
         template="none",
@@ -333,8 +336,8 @@ def _render_shipping_analysis(analytics: dict[str, Any]) -> None:
     fig.update_layout(
         height=280, margin=dict(l=10, r=10, t=5, b=5),
         xaxis=dict(title=None),
-        yaxis=dict(title=None),
-        hovermode="x unified",
+        yaxis=dict(title=None, autorange="reversed"),
+        hovermode="y unified",
         showlegend=False,
     )
     ChartCard("Shipping Provider Share", fig).render()

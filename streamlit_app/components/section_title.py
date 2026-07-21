@@ -17,6 +17,9 @@ class SectionTitle:
         self.subtitle = subtitle
 
     def render(self) -> None:
-        st.markdown(f'<h3 class="section-header">{self.title}</h3>', unsafe_allow_html=True)
-        if self.subtitle:
-            st.markdown(f'<p class="section-subtitle">{self.subtitle}</p>', unsafe_allow_html=True)
+        try:
+            st.markdown(f'<h3 class="section-header">{self.title}</h3>', unsafe_allow_html=True)
+            if self.subtitle:
+                st.markdown(f'<p class="section-subtitle">{self.subtitle}</p>', unsafe_allow_html=True)
+        except Exception as e:
+            st.error(f"Failed to render SectionTitle: {e}")

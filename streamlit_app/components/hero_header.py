@@ -25,16 +25,17 @@ class HeroHeader:
         self.subtitle = subtitle
         self.badge = badge
 
-    def render(self) -> None:
-        badge_html = (
-            f'<span class="hero-header-badge" '
-            f'style="background:rgba(255,255,255,0.15);color:white;">'
-            f"{self.badge}</span>"
-            if self.badge
-            else ""
-        )
-        st.markdown(
-            f"""
+def render(self) -> None:
+        try:
+            badge_html = (
+                f'<span class="hero-header-badge" '
+                f'style="background:rgba(255,255,255,0.15);color:white;">'
+                f"{self.badge}</span>"
+                if self.badge
+                else ""
+            )
+            st.markdown(
+                f"""
         <div class="hero-header"
              style="background:linear-gradient(135deg,#2563EB,#1D4ED8);">
             <div style="display:flex;justify-content:space-between;
@@ -43,12 +44,13 @@ class HeroHeader:
                     <p class="hero-header-overview" style="color:rgba(255,255,255,0.7);">
                         {self.subtitle.upper() if self.subtitle else ''}</p>
                     <h1 class="hero-header-title" style="color:white;">{self.title}</h1>
-                    {f'<p class="hero-header-subtitle" style="color:rgba(255,255,255,0.6);">'
-                     f'{self.subtitle}</p>' if self.subtitle and False else ''}
+                    {f'<p class="hero-header-subtitle" style="color:rgba(255,255,255,0.6);">{self.subtitle}</p>' if self.subtitle else ''}
                 </div>
                 {f'<div style="text-align:right;">{badge_html}</div>' if self.badge else ''}
             </div>
         </div>
         """,
-            unsafe_allow_html=True,
-        )
+                unsafe_allow_html=True,
+            )
+        except Exception as e:
+            st.error(f"Failed to render HeroHeader: {e}")

@@ -37,29 +37,32 @@ class MetricCard:
         self.accent = accent or THEME["primary"]
 
     def render(self) -> None:
-        delta_color = THEME["positive"] if self.delta_up else THEME["negative"]
-        arrow = "↑" if self.delta_up else "↓" if self.delta_up is not None else ""
-        delta_html = ""
-        if self.delta:
-            delta_html = (
-                f'<span class="metric-card-delta" style="color:{delta_color};">'
-                f"{arrow} {self.delta}</span>"
-            )
+        try:
+            delta_color = THEME["positive"] if self.delta_up else THEME["negative"]
+            arrow = "↑" if self.delta_up else "↓" if self.delta_up is not None else ""
+            delta_html = ""
+            if self.delta:
+                delta_html = (
+                    f'<span class="metric-card-delta" style="color:{delta_color};">'
+                    f"{arrow} {self.delta}</span>"
+                )
 
-        st.markdown(
-            f"""
-        <div class="metric-card">
-            <div class="metric-card-accent" style="background:{self.accent};"></div>
-            <div class="metric-card-header">
-                <span class="metric-card-label">{self.label}</span>
-                <span class="metric-card-icon">{self.icon}</span>
+            st.markdown(
+                f"""
+            <div class="metric-card">
+                <div class="metric-card-accent" style="background:{self.accent};"></div>
+                <div class="metric-card-header">
+                    <span class="metric-card-label">{self.label}</span>
+                    <span class="metric-card-icon">{self.icon}</span>
+                </div>
+                <div class="metric-card-value">{self.value}</div>
+                <div class="metric-card-footer">
+                    {delta_html}
+                    {f'<span class="metric-card-help">{self.help_text}</span>' if self.help_text else ''}
+                </div>
             </div>
-            <div class="metric-card-value">{self.value}</div>
-            <div class="metric-card-footer">
-                {delta_html}
-                {f'<span class="metric-card-help">{self.help_text}</span>' if self.help_text else ''}
-            </div>
-        </div>
-        """,
-            unsafe_allow_html=True,
-        )
+            """,
+                unsafe_allow_html=True,
+            )
+        except Exception as e:
+            st.error(f"Failed to render MetricCard: {e}")
