@@ -6,6 +6,7 @@ Enterprise-grade Business Intelligence Dashboard for Shopee marketplace analytic
 
 ```
 input/*.xlsx → ETL → DuckDB → Analytics Engine → Excel Dashboard
+                                      ↘ Streamlit BI App (interactive)
 ```
 
 Built with Clean Architecture, SOLID principles, and a modular plugin system for future marketplace integration (Tokopedia, TikTok Shop, Lazada, etc.).
@@ -26,6 +27,18 @@ python main.py --analytics-only
 python main.py --dashboard-only
 python main.py --list-files
 ```
+
+## Streamlit BI App (Interactive)
+
+```bash
+python -m streamlit run streamlit_app/app.py
+```
+
+Web-based interactive dashboard with:
+- **Dashboard** — KPIs, 8 Altair chart panels, business insights
+- **Upload** — Upload files, preview columns, run ETL with live progress
+- **Reports** — Generate and download the Excel dashboard
+- **Settings** — System info, analytics parameters, data management
 
 ## Dashboard Output
 
@@ -64,6 +77,10 @@ excel/          → XlsxWriter engine, styles, navigation
 config/         → Configuration, constants, mappings
 utils/          → Logger, helpers, decorators
 tests/          → Pytest test suite
+streamlit_app/  → Streamlit BI app (16 files)
+  pages/        → Dashboard, Upload, Reports, Settings pages
+  services/     → ETL, Analytics, Dashboard services
+  components/   → Reusable UI components
 input/          → Shopee export files (.xlsx)
 output/         → Generated dashboard (.xlsx)
 logs/           → ETL and application logs
