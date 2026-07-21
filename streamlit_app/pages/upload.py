@@ -67,74 +67,77 @@ def _preview_file(file_bytes: bytes, filename: str) -> tuple[list[dict], pl.Data
 
 
 def _render_upload_section() -> None:
-    """Upload new file, preview, and trigger ETL."""
-    st.markdown("### Upload New File")
+    """Upload new files, preview, and trigger ETL (supports multiple files)."""
+    st.markdown("### Upload Files")
     st.markdown(
-        "<p style='color:#64748b;'>Upload a Shopee order export file to save it to the input directory and process it.</p>",
+        "<p style='color:#64748b;'>Upload one or more Shopee order export files. All files are saved to the input directory and processed.</p>",
         unsafe_allow_html=True,
     )
 
-    uploaded_file = st.file_uploader(
-        "Choose a Shopee export file",
+    uploaded_files = st.file_uploader(
+        "Choose Shopee export file(s)",
         type=["xlsx", "xls", "csv"],
+        accept_multiple_files=True,
         key="upload_page_file",
     )
 
-    if not uploaded_file:
+    if not uploaded_files:
         return
 
-    file_bytes = uploaded_file.getvalue()
-    file_hash = hash(file_bytes)
-
-    if st.session_state.get("file_hash") != file_hash:
-        st.session_state["file_hash"] = file_hash
-        st.session_state["etl_completed"] = False
-        st.session_state["analytics_completed"] = False
-
-    # ── Preview ──
-    preview_result = _preview_file(file_bytes, uploaded_file.name)
-    if preview_result is None:
+    # Filter out previously seen files
+    new_files = [f for f in uploaded_files if hash(f.getvalue()) != st.session_state.get("file_hash")]
+    if not new_files:
+        st.info("All files have already been processed. Select new files to upload.")
+        if st.button("→ Go to Dashboard", type="primary"):
+            st.switch_page("app.py")
         return
-    raw_rows, preview_df = preview_result
 
-    with st.expander("Preview raw data", expanded=True):
-        if not preview_df.is_empty():
-            st.dataframe(preview_df.to_pandas(), use_container_width=True, hide_index=True)
-            st.caption(f"Showing first {min(5, len(raw_rows))} of {len(raw_rows)} rows")
-        else:
-            st.warning("No data could be read from this file.")
-            return
+    # ── Batch Save & Run ETL ──
+    total_rows = 0
+    success_count = 0
+    file_results = []
 
-        found_columns = _validate_columns(preview_df)
-        st.markdown(f"**Columns recognized:** {len(found_columns)} / {len(CANONICAL_COLUMNS)}")
+    if st.button("💾 Save & Run ETL on All", type="primary", use_container_width=True):
+        status_placeholder = st.status(f"Processing {len(new_files)} file(s)...", expanded=True)
 
-    # ── Save + Run ETL ──
-    col1, col2 = st.columns([1, 3])
-    with col1:
-        run_etl = st.button("💾 Save & Run ETL", type="primary", use_container_width=True)
+        for i, uploaded_file in enumerate(new_files):
+            file_bytes = uploaded_file.getvalue()
 
-    if run_etl:
-        with st.status("Saving and running ETL pipeline...", expanded=True) as status:
-            st.write("📁 Saving file to input directory...")
-            saved_path = ETLService.save_upload(file_bytes, uploaded_file.name)
-            st.write(f"✅ Saved as `{saved_path.name}`")
+            with status_placeholder:
+                st.write(f"**{i+1}/{len(new_files)}** — `{uploaded_file.name}`")
+                st.write("📁 Saving file...")
+                saved_path = ETLService.save_upload(file_bytes, uploaded_file.name)
 
-            st.write("📂 Extracting data from file...")
-            transformer = ShopeeTransformer()
-            df = transformer.transform(raw_rows)
-            st.write(f"✅ Extracted and transformed {len(df)} rows")
+                st.write("📂 Previewing...")
+                preview_result = _preview_file(file_bytes, uploaded_file.name)
+                if preview_result is None:
+                    st.warning(f"Skipped `{uploaded_file.name}` — could not read file.")
+                    continue
+                raw_rows, _ = preview_result
 
-            st.write("🗄️ Loading into database...")
-            result = _run_etl(str(saved_path))
-            st.write(f"✅ Loaded {result['rows_loaded']} rows, warehouse built")
+                st.write("🗄️ Running ETL...")
+                result = _run_etl(str(saved_path))
+                total_rows += result["rows_loaded"]
+                success_count += 1
+                file_results.append((uploaded_file.name, result["rows_loaded"]))
+                st.write(f"✅ `{uploaded_file.name}` — {result['rows_loaded']} rows loaded")
 
-            status.update(label="ETL complete!", state="complete")
+                st.session_state["file_hash"] = hash(file_bytes)
+
+        status_placeholder.update(
+            label=f"Processed {success_count}/{len(new_files)} file(s), {total_rows} total rows",
+            state="complete",
+        )
 
         st.session_state["etl_completed"] = True
-        st.session_state["etl_result"] = result
-        st.session_state["last_uploaded"] = uploaded_file.name
 
-        st.success(f"File saved and processed — {result['rows_loaded']} rows loaded.")
+        last_name = new_files[-1].name if new_files else ""
+        st.session_state["last_uploaded"] = f"{success_count} files (last: {last_name})"
+
+        st.success(f"✅ {success_count} file(s) processed — {total_rows} rows loaded total.")
+
+        for name, rows in file_results:
+            st.caption(f"  • {name}: {rows} rows")
 
         if st.button("→ Go to Dashboard", type="primary"):
             st.switch_page("app.py")
