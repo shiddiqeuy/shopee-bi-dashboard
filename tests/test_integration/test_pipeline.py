@@ -200,10 +200,10 @@ _EXPECTED_MODULES = [
 def populated_repo(in_memory_db, request) -> DuckDBRepository:
     """Repository with orders loaded through the full ETL pipeline."""
     from database.connection import (
-        _connection,
-    )  # monkeypatch global singleton
+        replace_pool_for_test,
+    )  # inject in-memory connection into pool
 
-    _connection = in_memory_db  # noqa: F841
+    replace_pool_for_test(in_memory_db)
     migrate(in_memory_db)
     repo = DuckDBRepository(in_memory_db)
 

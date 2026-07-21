@@ -8,20 +8,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
-from database.connection import close_connection, get_connection
-from database.repository import DuckDBRepository
+from database.connection import close_pool, init_pool
 
 from backend.api import etl, analytics, dashboard, files
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    repo = DuckDBRepository()
-    app.state.repo = repo
+    init_pool()
     yield
-    close_connection()
+    close_pool()
 
 
 app = FastAPI(title="Shopee BI Dashboard API", version="1.0.0", lifespan=lifespan)
