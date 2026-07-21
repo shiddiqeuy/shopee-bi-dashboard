@@ -61,28 +61,51 @@ def _data_freshness_info() -> str:
     return ""
 
 
-# ── Sidebar ────────────────────────────────────────────────────────────
+# ── Sidebar HTML/CSS ──────────────────────────────────────────────────
+st.markdown("""
+<style>
+    .sidebar-header {
+        font-size: 1.2rem; font-weight: 700; margin-bottom: 0;
+    }
+    .sidebar-sub {
+        color: #64748b; font-size: 0.75rem; margin-top: 0; margin-bottom: 0.5rem;
+    }
+    section[data-testid="stSidebar"] div[data-testid="stButton"] button {
+        justify-content: flex-start; text-align: left;
+        padding: 0.4rem 0.75rem; border: none;
+        box-shadow: none !important; font-size: 0.9rem;
+    }
+    section[data-testid="stSidebar"] div[data-testid="stButton"] button:hover {
+        background: #f1f5f9; border: none;
+    }
+    section[data-testid="stSidebar"] div[data-testid="stButton"] button[kind="primary"] {
+        background: #e0f2fe; color: #1B98F5; font-weight: 600;
+    }
+    section[data-testid="stSidebar"] div[data-testid="stButton"] button[kind="secondary"] {
+        background: transparent; color: #334155;
+    }
+    .stSidebar .st-cb { display: none; }
+</style>
+""", unsafe_allow_html=True)
+
 with st.sidebar:
-    st.markdown(
-        "<h2 style='margin-bottom:0;'>📊 Shopee BI</h2>"
-        "<p style='color:#64748b; font-size:0.8rem; margin-top:0;'>Business Intelligence Dashboard</p>",
-        unsafe_allow_html=True,
-    )
+    st.markdown('<p class="sidebar-header">📊 Shopee BI</p>', unsafe_allow_html=True)
+    st.markdown('<p class="sidebar-sub">Business Intelligence Dashboard</p>', unsafe_allow_html=True)
 
     st.divider()
 
-    # ── Navigation ──
-    pages = {
-        "Dashboard": ("📈", "Analytics & charts"),
-        "Upload": ("📁", "Upload & manage files"),
-        "Settings": ("⚙️", "Configuration"),
-    }
+    # ── Navigation (custom HTML) ──
+    pages = [
+        ("📈", "Dashboard", "Analytics & charts"),
+        ("📁", "Upload", "Upload & manage files"),
+        ("⚙️", "Settings", "Configuration"),
+    ]
 
-    for name, (icon, desc) in pages.items():
+    for icon, name, desc in pages:
         active = st.session_state.page == name
-        label = f"{icon} **{name}**" if not active else f"{icon} **{name}**"
+        klass = "nav-item active" if active else "nav-item"
         if st.button(
-            label,
+            f"{icon} {name}",
             key=f"nav_{name}",
             use_container_width=True,
             type="primary" if active else "secondary",
@@ -94,31 +117,30 @@ with st.sidebar:
     st.divider()
 
     # ── Data Status ──
-    st.markdown("##### Data Status")
-    if st.session_state.get("etl_completed"):
+    has_data = st.session_state.get("etl_completed")
+    if has_data:
         last = st.session_state.get("last_uploaded", "unknown")
-        st.markdown(f"✅ **Loaded**")
-        st.caption(f"File: {last}")
+        st.markdown("##### Data Status")
+        last_short = last if len(str(last)) < 30 else str(last)[:27] + "..."
+        st.markdown(f"✅ **Loaded**  \n{last_short}")
         freshness = _data_freshness_info()
         if freshness:
             st.caption(f"Last order: {freshness}")
     else:
-        st.markdown("⏳ **No data**")
-        st.caption("Upload a file to begin")
+        st.markdown("##### Getting Started")
+        st.markdown("Upload a Shopee export file to begin.")
 
     st.divider()
 
-    # ── Quick Guide ──
-    with st.expander("💡 Quick Guide", expanded=False):
+    with st.expander("💡 Guide", expanded=False):
         st.markdown(
             """
-**1. Upload** – Upload file(s) → auto ETL  
-**2. Dashboard** – KPIs, charts, customer insights, download Excel  
-**3. Settings** – System info, parameters, data management
+**1.** Upload file(s) → auto ETL  
+**2.** View KPIs, charts, insights  
+**3.** Download Excel report (13 sheets)
 """
         )
 
-    st.divider()
     st.caption("v1.0.0")
 
 # ── Page routing ───────────────────────────────────────────────────────
