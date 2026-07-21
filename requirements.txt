@@ -6,6 +6,8 @@ xlsxwriter>=3.1.0
 openpyxl>=3.1.0
 numpy>=1.26.0
 plotly>=5.18.0
+streamlit>=1.35.0
+altair>=5.0.0
 
 # Development (optional)
 # pytest>=8.0.0
