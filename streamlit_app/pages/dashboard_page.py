@@ -157,7 +157,7 @@ def _render_top_customers(repo: DuckDBRepository) -> None:
         return
     sql = """
         SELECT
-            COALESCE(NULLIF(buyer_name, ''), buyer_username) AS buyer_name,
+            buyer_username AS buyer_name,
             COUNT(DISTINCT order_id) AS total_orders,
             SUM(total_amount) AS total_revenue,
             (
@@ -193,7 +193,7 @@ def _render_top_customers(repo: DuckDBRepository) -> None:
     st.dataframe(
         pdf[["buyer_name", "total_revenue_fmt", "total_orders", "reorder_products"]],
         column_config={
-            "buyer_name": "Customer Name",
+            "buyer_name": "Username",
             "total_revenue_fmt": "Total Revenue",
             "total_orders": "Orders",
             "reorder_products": "Reorder Products",
