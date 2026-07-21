@@ -65,13 +65,19 @@ class ShopeeExtractor(Extractor):
                 return pl.from_pandas(pdf)
 
     def _rename_columns(self, df: pl.DataFrame) -> pl.DataFrame:
-        """Map raw column names to canonical names via COLUMN_MAP."""
+        """Map raw column names to canonical names via COLUMN_MAP.
+
+        Handles duplicate target names by keeping only the first mapping.
+        """
         rename_map: dict[str, str] = {}
+        seen_targets: set[str] = set()
         for col in df.columns:
             key = safe_string(col).lower()
-            if key in COLUMN_MAP:
-                rename_map[col] = COLUMN_MAP[key]
-            else:
-                rename_map[col] = key  # keep lowercase fallback
+            target = COLUMN_MAP.get(key, key)
+            if target in seen_targets:
+                log.debug("Skipping duplicate column '%s' → '%s'", col, target)
+                continue
+            seen_targets.add(target)
+            rename_map[col] = target
 
         return df.rename(rename_map)
