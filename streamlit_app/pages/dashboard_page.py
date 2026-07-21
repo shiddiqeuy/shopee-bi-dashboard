@@ -157,7 +157,7 @@ def _render_top_customers(repo: DuckDBRepository) -> None:
         return
     sql = """
         SELECT
-            buyer_name,
+            COALESCE(NULLIF(buyer_name, ''), buyer_username) AS buyer_name,
             COUNT(DISTINCT order_id) AS total_orders,
             SUM(total_amount) AS total_revenue,
             (
