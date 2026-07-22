@@ -7,6 +7,15 @@ An enterprise-grade Business Intelligence (BI) and analytics dashboard designed 
 
 ---
 
+## Project Links
+
+- **Documentation Wiki**: [Open the project Wiki](https://github.com/shiddiqeuy/shopee-bi-dashboard/wiki) for architecture, setup, ETL, analytics, and agent guidelines.
+- **Contribution Guide**: Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening your first Pull Request.
+- **Discussions**: Share ideas, questions, and improvement proposals in [GitHub Discussions](https://github.com/shiddiqeuy/shopee-bi-dashboard/discussions).
+- **Improvement Ideas**: Use the [Ideas category](https://github.com/shiddiqeuy/shopee-bi-dashboard/discussions/categories/ideas) for suggestions before they become Issues.
+
+---
+
 ## Features & Capabilities
 
 - **Executive KPI Cards**: Track Total Revenue, Total Orders, Total Customers, Average Basket Size, Repeat Customer Rate, and Active Cities with Month-over-Month (MoM) growth indicators.
@@ -74,7 +83,11 @@ shopee-bi-dashboard/
 
 ## Contribution & Workflow Guidelines
 
-1. **Branching Strategy**: Create feature branches from `master` (e.g., `feature/your-feature-name` or `fix/...`).
-2. **Issues & Milestones**: Link all pull requests to corresponding GitHub issues and milestones.
-3. **Testing**: Run backend tests (`python -m pytest`) and frontend builds (`npm --prefix frontend run build`) before opening a pull request.
-4. **Attribution**: Always preserve copyright and author attribution (`Created by Muhammad Shiddiq Azis 2026`).
+Contributions are welcome. If this is your first open source contribution, start with the [Contribution Guide](CONTRIBUTING.md).
+
+1. **Discuss First**: Use [GitHub Discussions](https://github.com/shiddiqeuy/shopee-bi-dashboard/discussions) for questions and improvement ideas.
+2. **Branching Strategy**: Create feature branches from `master` (e.g., `feature/your-feature-name` or `fix/...`).
+3. **Issues & Milestones**: Link all pull requests to corresponding GitHub issues and milestones when available.
+4. **Documentation**: Check the [Project Wiki](https://github.com/shiddiqeuy/shopee-bi-dashboard/wiki) for architecture, setup, and workflow context.
+5. **Testing**: Run backend tests (`python -m pytest`) and frontend builds (`npm --prefix frontend run build`) before opening a pull request.
+6. **Attribution**: Always preserve copyright and author attribution (`Created by Muhammad Shiddiq Azis 2026`).
