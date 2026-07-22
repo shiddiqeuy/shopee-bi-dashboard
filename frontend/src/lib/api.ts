@@ -50,6 +50,12 @@ export const api = {
       return res.json();
     },
     status: () => fetchJSON<ETLStatus>("/etl/status"),
+    reload: (filename: string): Promise<ETLResult> =>
+      fetchJSON<ETLResult>(`/etl/reload/${encodeURIComponent(filename)}`, { method: "POST" }),
+    reloadAll: (): Promise<{ results: ETLResult[] }> =>
+      fetchJSON<{ results: ETLResult[] }>("/etl/reload-all", { method: "POST" }),
+    fileStatus: (filename: string): Promise<{ filename: string; exists: boolean; status: string; total_rows: number }> =>
+      fetchJSON(`/etl/status/${encodeURIComponent(filename)}`),
   },
 
   analytics: {

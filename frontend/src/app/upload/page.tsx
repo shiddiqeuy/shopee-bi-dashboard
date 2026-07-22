@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { api, FileInfo, ETLResult } from "@/lib/api";
 import { useData } from "../data-context";
-import { Upload, Trash2, FileSpreadsheet, CheckCircle, XCircle, Loader2, RefreshCw, ArrowUpDown } from "lucide-react";
+import { Upload, Trash2, FileSpreadsheet, CheckCircle, XCircle, Loader2, RefreshCw, ArrowUpDown, Play } from "lucide-react";
 
 export default function UploadPage() {
   const [files, setFiles] = useState<FileInfo[]>([]);
@@ -59,6 +59,36 @@ export default function UploadPage() {
     } finally {
       setUploading(false);
       e.target.value = "";
+    }
+  }
+
+  async function handleReload(name: string) {
+    setUploading(true);
+    setError(null);
+    try {
+      const res = await api.etl.reload(name);
+      setResults([res]);
+      await loadFiles();
+      await refreshStatus();
+    } catch (err: any) {
+      setError(err.message || "ETL reload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleReloadAll() {
+    setUploading(true);
+    setError(null);
+    try {
+      const res = await api.etl.reloadAll();
+      setResults(res.results);
+      await loadFiles();
+      await refreshStatus();
+    } catch (err: any) {
+      setError(err.message || "ETL reload all failed");
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -170,7 +200,7 @@ export default function UploadPage() {
       {/* File List & Management */}
       <div className="bg-white rounded-xl border border-gray-200">
         <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-wrap gap-3">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 flex-wrap">
             <h2 className="font-semibold text-gray-800">Uploaded Files ({files.length})</h2>
             {selectedFiles.length > 0 && (
               <button
@@ -179,6 +209,16 @@ export default function UploadPage() {
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 Delete Selected ({selectedFiles.length})
+              </button>
+            )}
+            {files.length > 0 && (
+              <button
+                onClick={handleReloadAll}
+                disabled={uploading}
+                className="text-xs bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 font-medium disabled:opacity-50"
+              >
+                <Play className="w-3.5 h-3.5" />
+                Re-run All ETL
               </button>
             )}
           </div>
@@ -226,7 +266,7 @@ export default function UploadPage() {
                 />
                 <span>Name</span>
               </div>
-              <div className="ml-auto flex items-center gap-8 pr-28 text-right">
+              <div className="ml-auto flex items-center gap-8 pr-40 text-right">
                 <span>Size</span>
                 <span>Upload Date</span>
               </div>
@@ -257,6 +297,15 @@ export default function UploadPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleReload(f.name)}
+                        disabled={uploading}
+                        className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                        title="Re-run ETL on this file"
+                      >
+                        <Play className="w-3.5 h-3.5" />
+                        Re-run ETL
+                      </button>
                       <label className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 border border-gray-300 text-gray-700 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
                         <RefreshCw className="w-3.5 h-3.5" />
                         Replace

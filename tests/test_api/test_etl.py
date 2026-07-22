@@ -152,3 +152,64 @@ class TestETLUpload:
         assert data["results"][0]["filename"] == "test1.xlsx"
         assert data["results"][0]["rows_loaded"] == 25
         assert data["results"][1]["filename"] == "test2.xlsx"
+
+    @patch("backend.api.etl.INPUT_DIR")
+    @patch("backend.api.etl.ETLService")
+    @patch("backend.api.etl.asyncio.to_thread", side_effect=lambda fn, *a, **kw: fn(*a, **kw))
+    def test_reload_file_success(self, mock_to_thread, mock_etl_service_class, mock_input_dir, client, mock_repo):
+        mock_path = MagicMock()
+        mock_path.exists.return_value = True
+        mock_path.is_file.return_value = True
+        mock_input_dir.__truediv__.return_value = mock_path
+
+        instance = mock_etl_service_class.return_value
+        instance.run.return_value = {
+            "rows_loaded": 15,
+            "warehouse_built": True,
+            "total_rows": 15,
+            "status": "success",
+        }
+
+        resp = client.post("/api/etl/reload/test.xlsx")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["filename"] == "test.xlsx"
+        assert data["rows_loaded"] == 15
+        assert data["status"] == "success"
+
+    @patch("backend.api.etl.INPUT_DIR")
+    @patch("backend.api.etl.ETLService")
+    @patch("backend.api.etl.asyncio.to_thread", side_effect=lambda fn, *a, **kw: fn(*a, **kw))
+    def test_reload_all_success(self, mock_to_thread, mock_etl_service_class, mock_input_dir, client, mock_repo):
+        instance = mock_etl_service_class.return_value
+        mock_etl_service_class.list_files.return_value = [{"name": "test1.xlsx", "path": "/tmp/test1.xlsx"}]
+        instance.run.return_value = {
+            "rows_loaded": 10,
+            "warehouse_built": True,
+            "total_rows": 10,
+            "status": "success",
+        }
+
+        resp = client.post("/api/etl/reload-all")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "results" in data
+        assert len(data["results"]) == 1
+        assert data["results"][0]["filename"] == "test1.xlsx"
+        assert data["results"][0]["rows_loaded"] == 10
+
+    @patch("backend.api.etl.INPUT_DIR")
+    def test_file_etl_status(self, mock_input_dir, client, mock_repo):
+        mock_path = MagicMock()
+        mock_path.exists.return_value = True
+        mock_path.is_file.return_value = True
+        mock_input_dir.__truediv__.return_value = mock_path
+        mock_repo.staging_count.return_value = 10
+
+        resp = client.get("/api/etl/status/test.xlsx")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["filename"] == "test.xlsx"
+        assert data["exists"] is True
+        assert data["status"] == "completed"
+        assert data["total_rows"] == 10
