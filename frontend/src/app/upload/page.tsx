@@ -5,6 +5,44 @@ import { api, FileInfo, ETLResult } from "@/lib/api";
 import { useData } from "../data-context";
 import { Upload, Trash2, FileSpreadsheet, CheckCircle, XCircle, Loader2, RefreshCw, ArrowUpDown, Play } from "lucide-react";
 
+type ETLStepStatus = "pending" | "active" | "done" | "error";
+
+interface ETLStep {
+  label: string;
+  description: string;
+  status: ETLStepStatus;
+}
+
+const PROCESS_STEPS: Omit<ETLStep, "status">[] = [
+  { label: "Upload", description: "Save selected file(s) to the input folder" },
+  { label: "Extract", description: "Read Shopee workbook or CSV rows" },
+  { label: "Transform", description: "Normalize columns, clean values, and validate records" },
+  { label: "Load", description: "Write clean order rows into the staging table" },
+  { label: "Warehouse", description: "Rebuild analytics tables and refresh dashboard status" },
+];
+
+function buildSteps(activeIndex = 0): ETLStep[] {
+  return PROCESS_STEPS.map((step, index) => ({
+    ...step,
+    status: index < activeIndex ? "done" : index === activeIndex ? "active" : "pending",
+  }));
+}
+
+function completedSteps(): ETLStep[] {
+  return PROCESS_STEPS.map((step) => ({ ...step, status: "done" }));
+}
+
+function failedSteps(activeIndex: number): ETLStep[] {
+  return PROCESS_STEPS.map((step, index) => ({
+    ...step,
+    status: index < activeIndex ? "done" : index === activeIndex ? "error" : "pending",
+  }));
+}
+
+function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error ? err.message : fallback;
+}
+
 export default function UploadPage() {
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -13,6 +51,8 @@ export default function UploadPage() {
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<"name" | "date" | "size">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [etlSteps, setEtlSteps] = useState<ETLStep[]>(buildSteps());
+  const [processTitle, setProcessTitle] = useState<string | null>(null);
 
   const { refreshStatus } = useData();
 
@@ -23,7 +63,44 @@ export default function UploadPage() {
     } catch {}
   }, []);
 
-  useEffect(() => { loadFiles(); }, [loadFiles]);
+  useEffect(() => {
+    let active = true;
+
+    async function loadInitialFiles() {
+      try {
+        const data = await api.files.list();
+        if (active) {
+          setFiles(data.files);
+        }
+      } catch {}
+    }
+
+    void loadInitialFiles();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  function beginProcess(title: string) {
+    setProcessTitle(title);
+    setEtlSteps(buildSteps(0));
+  }
+
+  function markRunningPipeline() {
+    setEtlSteps(buildSteps(2));
+  }
+
+  function markRefreshing() {
+    setEtlSteps(buildSteps(4));
+  }
+
+  function markComplete() {
+    setEtlSteps(completedSteps());
+  }
+
+  function markFailed(activeIndex: number) {
+    setEtlSteps(failedSteps(activeIndex));
+  }
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files;
@@ -31,13 +108,22 @@ export default function UploadPage() {
     setUploading(true);
     setResults(null);
     setError(null);
+    beginProcess(`Uploading ${selected.length} file${selected.length === 1 ? "" : "s"}`);
     try {
+      markRunningPipeline();
       const res = await api.etl.uploadMultiple(selected);
       setResults(res.results);
+      markRefreshing();
       await loadFiles();
       await refreshStatus();
-    } catch (err: any) {
-      setError(err.message || "Upload failed");
+      if (res.results.some((r) => r.status !== "success")) {
+        markFailed(3);
+      } else {
+        markComplete();
+      }
+    } catch (err: unknown) {
+      markFailed(2);
+      setError(errorMessage(err, "Upload failed"));
     } finally {
       setUploading(false);
       e.target.value = "";
@@ -49,13 +135,23 @@ export default function UploadPage() {
     if (!file) return;
     setUploading(true);
     setError(null);
+    setResults(null);
+    beginProcess(`Replacing ${name}`);
     try {
+      markRunningPipeline();
       const res = await api.files.replace(name, file);
       setResults([res]);
+      markRefreshing();
       await loadFiles();
       await refreshStatus();
-    } catch (err: any) {
-      setError(err.message || "File replacement failed");
+      if (res.status !== "success") {
+        markFailed(3);
+      } else {
+        markComplete();
+      }
+    } catch (err: unknown) {
+      markFailed(2);
+      setError(errorMessage(err, "File replacement failed"));
     } finally {
       setUploading(false);
       e.target.value = "";
@@ -65,13 +161,23 @@ export default function UploadPage() {
   async function handleReload(name: string) {
     setUploading(true);
     setError(null);
+    setResults(null);
+    beginProcess(`Running ETL for ${name}`);
     try {
+      markRunningPipeline();
       const res = await api.etl.reload(name);
       setResults([res]);
+      markRefreshing();
       await loadFiles();
       await refreshStatus();
-    } catch (err: any) {
-      setError(err.message || "ETL reload failed");
+      if (res.status !== "success") {
+        markFailed(3);
+      } else {
+        markComplete();
+      }
+    } catch (err: unknown) {
+      markFailed(2);
+      setError(errorMessage(err, "ETL reload failed"));
     } finally {
       setUploading(false);
     }
@@ -80,13 +186,23 @@ export default function UploadPage() {
   async function handleReloadAll() {
     setUploading(true);
     setError(null);
+    setResults(null);
+    beginProcess(`Running ETL for ${files.length} file${files.length === 1 ? "" : "s"}`);
     try {
+      markRunningPipeline();
       const res = await api.etl.reloadAll();
       setResults(res.results);
+      markRefreshing();
       await loadFiles();
       await refreshStatus();
-    } catch (err: any) {
-      setError(err.message || "ETL reload all failed");
+      if (res.results.some((r) => r.status !== "success")) {
+        markFailed(3);
+      } else {
+        markComplete();
+      }
+    } catch (err: unknown) {
+      markFailed(2);
+      setError(errorMessage(err, "ETL reload all failed"));
     } finally {
       setUploading(false);
     }
@@ -167,6 +283,60 @@ export default function UploadPage() {
         )}
       </div>
 
+      {/* ETL Process */}
+      {processTitle && (
+        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+            <div>
+              <h2 className="font-semibold text-gray-800">ETL Process</h2>
+              <p className="text-xs text-gray-500 mt-1">{processTitle}</p>
+            </div>
+            <span className="text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-3 py-1">
+              {uploading ? "Running" : error ? "Needs attention" : "Complete"}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+            {etlSteps.map((step, index) => {
+              const isActive = step.status === "active";
+              const isDone = step.status === "done";
+              const isError = step.status === "error";
+              return (
+                <div
+                  key={step.label}
+                  className={`rounded-lg border p-3 ${
+                    isError
+                      ? "border-red-200 bg-red-50"
+                      : isDone
+                      ? "border-green-200 bg-green-50"
+                      : isActive
+                      ? "border-blue-200 bg-blue-50"
+                      : "border-gray-200 bg-gray-50"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <div
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
+                        isError
+                          ? "bg-red-600 text-white"
+                          : isDone
+                          ? "bg-green-600 text-white"
+                          : isActive
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-200 text-gray-500"
+                      }`}
+                    >
+                      {isActive ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : isDone ? "✓" : isError ? "!" : index + 1}
+                    </div>
+                    <span className="text-sm font-medium text-gray-800">{step.label}</span>
+                  </div>
+                  <p className="text-xs text-gray-500 leading-relaxed">{step.description}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Results Summary */}
       {results && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
@@ -229,7 +399,7 @@ export default function UploadPage() {
               <span>Sort by:</span>
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
+                onChange={(e) => setSortBy(e.target.value as "name" | "date" | "size")}
                 className="border border-gray-300 rounded px-2 py-1 text-xs bg-white text-gray-700"
               >
                 <option value="date">Date</option>
