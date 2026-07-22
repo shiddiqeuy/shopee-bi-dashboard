@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { api, FileInfo, ETLResult } from "@/lib/api";
+import { api, FileInfo, ETLLogEntry, ETLResult } from "@/lib/api";
 import { useData } from "../data-context";
 import { Upload, Trash2, FileSpreadsheet, CheckCircle, XCircle, Loader2, RefreshCw, ArrowUpDown, Play } from "lucide-react";
 
@@ -52,6 +52,7 @@ export default function UploadPage() {
   const [sortBy, setSortBy] = useState<"name" | "date" | "size">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [etlSteps, setEtlSteps] = useState<ETLStep[]>(buildSteps());
+  const [etlLogs, setEtlLogs] = useState<ETLLogEntry[]>([]);
   const [processTitle, setProcessTitle] = useState<string | null>(null);
 
   const { refreshStatus } = useData();
@@ -63,12 +64,19 @@ export default function UploadPage() {
     } catch {}
   }, []);
 
+  const loadLogs = useCallback(async () => {
+    try {
+      const data = await api.etl.logs();
+      setEtlLogs(data.logs);
+    } catch {}
+  }, []);
+
   useEffect(() => {
     let active = true;
 
     async function loadInitialFiles() {
       try {
-        const data = await api.files.list();
+        const [data] = await Promise.all([api.files.list(), loadLogs()]);
         if (active) {
           setFiles(data.files);
         }
@@ -79,7 +87,11 @@ export default function UploadPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [loadLogs]);
+
+  async function refreshAfterDataChange() {
+    await Promise.all([loadFiles(), loadLogs(), refreshStatus()]);
+  }
 
   function beginProcess(title: string) {
     setProcessTitle(title);
@@ -114,8 +126,7 @@ export default function UploadPage() {
       const res = await api.etl.uploadMultiple(selected);
       setResults(res.results);
       markRefreshing();
-      await loadFiles();
-      await refreshStatus();
+      await refreshAfterDataChange();
       if (res.results.some((r) => r.status !== "success")) {
         markFailed(3);
         setError("Beberapa file gagal diproses. Detail teknis sudah dicatat di backend log.");
@@ -143,8 +154,7 @@ export default function UploadPage() {
       const res = await api.files.replace(name, file);
       setResults([res]);
       markRefreshing();
-      await loadFiles();
-      await refreshStatus();
+      await refreshAfterDataChange();
       if (res.status !== "success") {
         markFailed(3);
         setError(res.error || "File gagal diproses. Detail teknis sudah dicatat di backend log.");
@@ -170,8 +180,7 @@ export default function UploadPage() {
       const res = await api.etl.reload(name);
       setResults([res]);
       markRefreshing();
-      await loadFiles();
-      await refreshStatus();
+      await refreshAfterDataChange();
       if (res.status !== "success") {
         markFailed(3);
         setError(res.error || "ETL gagal diproses. Detail teknis sudah dicatat di backend log.");
@@ -196,8 +205,7 @@ export default function UploadPage() {
       const res = await api.etl.reloadAll();
       setResults(res.results);
       markRefreshing();
-      await loadFiles();
-      await refreshStatus();
+      await refreshAfterDataChange();
       if (res.results.some((r) => r.status !== "success")) {
         markFailed(3);
         setError("Sebagian proses ETL gagal. Detail teknis sudah dicatat di backend log.");
@@ -215,7 +223,7 @@ export default function UploadPage() {
   async function handleDelete(name: string) {
     await api.files.delete(name);
     setSelectedFiles((prev) => prev.filter((n) => n !== name));
-    await loadFiles();
+    await refreshAfterDataChange();
   }
 
   async function handleBulkDelete() {
@@ -224,13 +232,13 @@ export default function UploadPage() {
       await api.files.delete(name);
     }
     setSelectedFiles([]);
-    await loadFiles();
+    await refreshAfterDataChange();
   }
 
   async function handleClear() {
     await api.files.clear();
     setSelectedFiles([]);
-    await loadFiles();
+    await refreshAfterDataChange();
   }
 
   function toggleSelectAll() {
@@ -373,6 +381,56 @@ export default function UploadPage() {
           <p className="text-sm text-red-600">{error}</p>
         </div>
       )}
+
+      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div>
+            <h2 className="font-semibold text-gray-800">ETL Process Log</h2>
+            <p className="text-xs text-gray-500 mt-1">Recent extract, transform, load, and validation results.</p>
+          </div>
+          <button
+            onClick={loadLogs}
+            className="text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            Refresh Logs
+          </button>
+        </div>
+        {etlLogs.length === 0 ? (
+          <div className="text-sm text-gray-400 py-3">No ETL logs available yet</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-gray-500 border-b border-gray-100">
+                  <th className="py-2 pr-4 font-medium">Time</th>
+                  <th className="py-2 pr-4 font-medium">File</th>
+                  <th className="py-2 pr-4 font-medium text-right">Extracted</th>
+                  <th className="py-2 pr-4 font-medium text-right">Loaded</th>
+                  <th className="py-2 pr-4 font-medium text-right">Invalid</th>
+                  <th className="py-2 pr-4 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {etlLogs.map((entry, index) => (
+                  <tr key={`${entry.timestamp}-${entry.source_file}-${index}`} className="border-b border-gray-50 last:border-0">
+                    <td className="py-2 pr-4 text-xs text-gray-500 whitespace-nowrap">{new Date(entry.timestamp).toLocaleString()}</td>
+                    <td className="py-2 pr-4 text-gray-700 font-medium">{entry.source_file}</td>
+                    <td className="py-2 pr-4 text-right text-gray-600">{entry.rows_extracted ?? 0}</td>
+                    <td className="py-2 pr-4 text-right text-gray-600">{entry.rows_loaded ?? 0}</td>
+                    <td className="py-2 pr-4 text-right text-gray-600">{entry.rows_invalid ?? 0}</td>
+                    <td className="py-2 pr-4">
+                      <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${entry.status === "success" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+                        {entry.status}
+                      </span>
+                      {entry.error_message && <div className="text-xs text-red-500 mt-1">{entry.error_message}</div>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* File List & Management */}
       <div className="bg-white rounded-xl border border-gray-200">

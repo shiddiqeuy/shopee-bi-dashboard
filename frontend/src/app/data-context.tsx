@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useCallback, ReactNode } from "rea
 import { api, ETLStatus } from "@/lib/api";
 
 interface DataState {
-  analytics: any | null;
+  analytics: unknown | null;
   status: ETLStatus | null;
   loading: boolean;
 }

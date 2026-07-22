@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from config.config import INPUT_DIR
 from database.repository import DuckDBRepository
 from backend.deps import get_repo
+from etl.log_writer import ETLLogWriter
 from streamlit_app.services.etl_service import ETLService
 from utils.logger import get_logger, log_error_context
 
@@ -33,9 +34,9 @@ async def upload_file(file: UploadFile = File(...), repo: DuckDBRepository = Dep
     try:
         service = ETLService(repo)
         contents = await file.read()
-        saved_path = await asyncio.to_thread(service.save_upload, contents, file.filename)
+        await asyncio.to_thread(service.save_upload, contents, file.filename)
         stage = "etl"
-        result = await asyncio.to_thread(service.run, str(saved_path))
+        result = await asyncio.to_thread(service.rebuild_all)
         return {
             "filename": file.filename,
             "rows_loaded": result.get("rows_loaded", 0),
@@ -53,20 +54,20 @@ async def upload_multiple_files(files: list[UploadFile] = File(...), repo: DuckD
     try:
         service = ETLService(repo)
         results = []
+        uploaded_names = []
         for file in files:
             contents: bytes | None = None
             stage = "upload"
             try:
                 contents = await file.read()
-                saved_path = await asyncio.to_thread(service.save_upload, contents, file.filename)
-                stage = "etl"
-                result = await asyncio.to_thread(service.run, str(saved_path))
+                await asyncio.to_thread(service.save_upload, contents, file.filename)
+                uploaded_names.append(file.filename)
                 results.append({
                     "filename": file.filename,
-                    "rows_loaded": result.get("rows_loaded", 0),
-                    "warehouse_built": result.get("warehouse_built", False),
-                    "total_rows": result.get("total_rows", 0),
-                    "status": result.get("status", "success"),
+                    "rows_loaded": 0,
+                    "warehouse_built": False,
+                    "total_rows": 0,
+                    "status": "success",
                 })
             except Exception as e:
                 log_error_context(log, "ETL upload failed for file", exc=e, stage=stage, **_upload_context(file, contents))
@@ -78,6 +79,16 @@ async def upload_multiple_files(files: list[UploadFile] = File(...), repo: DuckD
                     "status": "error",
                     "error": PUBLIC_ETL_ERROR,
                 })
+        if uploaded_names:
+            stage = "etl"
+            rebuild = await asyncio.to_thread(service.rebuild_all)
+            rebuilt_by_name = {r["filename"]: r for r in rebuild.get("results", [])}
+            for result in results:
+                if result["status"] == "success":
+                    result.update(rebuilt_by_name.get(result["filename"], {
+                        "warehouse_built": rebuild.get("warehouse_built", False),
+                        "total_rows": rebuild.get("total_rows", 0),
+                    }))
         return {"results": results}
     except Exception as exc:
         log_error_context(log, "ETL multiple upload failed", exc=exc, stage="upload")
@@ -91,7 +102,8 @@ async def reload_file(filename: str, repo: DuckDBRepository = Depends(get_repo))
         file_path = INPUT_DIR / filename
         if not file_path.exists() or not file_path.is_file():
             return JSONResponse(status_code=404, content={"detail": f"File {filename} not found"})
-        result = await asyncio.to_thread(service.run, str(file_path))
+        rebuild = await asyncio.to_thread(service.rebuild_all)
+        result = next((r for r in rebuild.get("results", []) if r.get("filename") == filename), rebuild)
         return {
             "filename": filename,
             "rows_loaded": result.get("rows_loaded", 0),
@@ -108,29 +120,8 @@ async def reload_file(filename: str, repo: DuckDBRepository = Depends(get_repo))
 async def reload_all_files(repo: DuckDBRepository = Depends(get_repo)):
     try:
         service = ETLService(repo)
-        files = ETLService.list_files()
-        results = []
-        for f in files:
-            try:
-                result = await asyncio.to_thread(service.run, f["path"])
-                results.append({
-                    "filename": f["name"],
-                    "rows_loaded": result.get("rows_loaded", 0),
-                    "warehouse_built": result.get("warehouse_built", False),
-                    "total_rows": result.get("total_rows", 0),
-                    "status": result.get("status", "success"),
-                })
-            except Exception as e:
-                log_error_context(log, "ETL reload failed for file", exc=e, stage="etl", filename=f["name"], path=f["path"])
-                results.append({
-                    "filename": f["name"],
-                    "rows_loaded": 0,
-                    "warehouse_built": False,
-                    "total_rows": 0,
-                    "status": "error",
-                    "error": PUBLIC_ETL_ERROR,
-                })
-        return {"results": results}
+        result = await asyncio.to_thread(service.rebuild_all)
+        return {"results": result.get("results", [])}
     except Exception as exc:
         log_error_context(log, "ETL reload-all failed", exc=exc, stage="etl")
         return JSONResponse(status_code=500, content={"detail": PUBLIC_ETL_ERROR})
@@ -144,6 +135,17 @@ def etl_status(repo: DuckDBRepository = Depends(get_repo)):
     except Exception as exc:
         log_error_context(log, "ETL status check failed", exc=exc, stage="status")
         return JSONResponse(status_code=500, content={"detail": "ETL status check failed"})
+
+
+@router.get("/logs")
+def etl_logs(limit: int = 25):
+    try:
+        logs = ETLLogWriter().read_runs(limit)
+        logs.reverse()
+        return {"logs": logs}
+    except Exception as exc:
+        log_error_context(log, "ETL logs read failed", exc=exc, stage="logs")
+        return JSONResponse(status_code=500, content={"detail": "ETL logs read failed"})
 
 
 @router.get("/status/{filename}")

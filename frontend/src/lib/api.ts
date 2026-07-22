@@ -40,6 +40,17 @@ export interface ETLStatus {
   total_rows: number;
 }
 
+export interface ETLLogEntry {
+  timestamp: string;
+  source_file: string;
+  rows_extracted: number;
+  rows_loaded: number;
+  rows_invalid: number;
+  status: string;
+  error_message?: string | null;
+  extra?: Record<string, unknown>;
+}
+
 export const api = {
   health: () => fetchJSON<{ status: string }>("/health"),
 
@@ -61,6 +72,7 @@ export const api = {
       return res.json();
     },
     status: () => fetchJSON<ETLStatus>("/etl/status"),
+    logs: (limit = 25) => fetchJSON<{ logs: ETLLogEntry[] }>(`/etl/logs?limit=${limit}`),
     reload: (filename: string): Promise<ETLResult> =>
       fetchJSON<ETLResult>(`/etl/reload/${encodeURIComponent(filename)}`, { method: "POST" }),
     reloadAll: (): Promise<{ results: ETLResult[] }> =>
@@ -70,7 +82,7 @@ export const api = {
   },
 
   analytics: {
-    compute: () => fetchJSON<any>("/analytics/compute"),
+    compute: () => fetchJSON<unknown>("/analytics/compute"),
   },
 
   dashboard: {
