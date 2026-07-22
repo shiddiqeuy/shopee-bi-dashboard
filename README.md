@@ -1,114 +1,80 @@
-# Shopee BI Dashboard
+# Shopee BI & Analytics Dashboard
 
-Enterprise-grade Business Intelligence Dashboard for Shopee marketplace analytics. Automatically generates a professional Excel dashboard from Shopee Order Export files.
+> **Data Uploaded:** 22 July 2026 | 09:00 WIB  
+> **Author:** Created by Muhammad Shiddiq Azis 2026
 
-## Architecture
+An enterprise-grade Business Intelligence (BI) and analytics dashboard designed specifically for Shopee marketplace merchants, featuring advanced Horeca & Cafe bundling recommendations, interactive pivot tables, global filter controls, and sanitized data visualizations.
 
-```
-input/*.xlsx → ETL → DuckDB → Analytics Engine → Excel Dashboard
-                                      ↘ Streamlit BI App (interactive)
-```
+---
 
-Built with Clean Architecture, SOLID principles, and a modular plugin system for future marketplace integration (Tokopedia, TikTok Shop, Lazada, etc.).
+## Features & Capabilities
 
-## Quick Start
+- **Executive KPI Cards**: Track Total Revenue, Total Orders, Total Customers, Average Basket Size, Repeat Customer Rate, and Active Cities with Month-over-Month (MoM) growth indicators.
+- **Global Filter Bar**: Dynamically slice data across Date Ranges, Provinces/Regions, Product Categories, and Order Statuses.
+- **Advanced Visualizations**:
+  - Monthly Revenue Trend (MoM line chart).
+  - Top Products by Revenue (Horizontal bar chart with optimized Y-axis margins to eliminate text clipping).
+  - Shipping Provider Share (Pie chart with sanitized fallback handling for "Unknown" provider entries).
+  - Regional Performance & Payment Method distribution.
+- **Interactive Pivot Table**: SKU-level performance table including Units Sold, Total Revenue (Rp), Average Selling Price (ASP), and Cancellation Rate % with text search, sorting, and pagination.
+- **Market Basket Analysis**: AI-powered association rule mining for Horeca & Cafe product bundling (Support Rate %, Confidence Rate %, Lift Score, and Suggested Action callouts).
 
-```bash
-# Install dependencies
-pip install -r requirements.txt
+---
 
-# Run the full pipeline (CLI)
-python main.py
+## Project Directory Structure
 
-# Or run individual stages
-python main.py --etl-only
-python main.py --analytics-only
-python main.py --dashboard-only
-python main.py --list-files
-```
-
-## Streamlit BI App (Interactive)
-
-```bash
-python -m streamlit run streamlit_app/app.py
-```
-
-Web-based interactive dashboard with:
-- **Dashboard** — KPI grid, Top Customers table (name + revenue + orders + reorder count), 8 Altair chart panels (mobile-responsive), business insights
-- **Upload** — Upload files via browser (saved to `input/`), preview columns, column validation, run ETL with live progress, manage existing files (list, run/re-run ETL, delete)
-- **Reports** — Generate and download the Excel dashboard
-- **Settings** — System info, analytics parameters, data management
-
-## Dashboard Output
-
-The generated Excel file (`output/Shopee_Geographic_BI_Dashboard.xlsx`) contains 13 sheets:
-
-| Sheet | Content |
-|-------|---------|
-| Navigation | Clickable index |
-| Executive Dashboard | Top KPIs + revenue trend chart |
-| KPI Summary | Full metric table |
-| City Performance | City ranking, growth, opportunity scores |
-| Province Performance | Province ranking and contribution |
-| Product Performance | ABC, Pareto, product affinity |
-| Customer Behaviour | RFM, segmentation, top customers |
-| Monthly Trend | Revenue, orders, MoM growth, moving average |
-| Shipping | Courier performance and cost analysis |
-| Payment | Method distribution and regional preference |
-| Cancellation | Cancellation rate, reasons, breakdown |
-| Hidden Insight | AI-generated business recommendations |
-| Raw Data | Full order data for reference |
-| Methodology | Metrics definitions and methodology |
-
-## Project Structure
-
-```
-app/            → Application wiring
-core/           → Domain entities, interfaces, exceptions
-etl/            → Extract, transform, load pipelines
-  shopee/       → Shopee-specific ETL
-database/       → DuckDB connection, migrations, warehouse
-analytics/      → Business logic modules (9 modules)
-dashboard/      → Excel generation (13 sheet writers)
-  sheets/       → Individual sheet implementations
-charts/         → Chart builders (Excel + Plotly)
-excel/          → XlsxWriter engine, styles, navigation
-config/         → Configuration, constants, mappings
-utils/          → Logger, helpers, decorators
-tests/          → Pytest test suite
-streamlit_app/  → Streamlit BI app (16 files)
-  pages/        → Dashboard, Upload, Reports, Settings pages
-  services/     → ETL, Analytics, Dashboard services
-  components/   → Reusable UI components
-input/          → Uploaded Shopee export files (managed from frontend)
-output/         → Generated dashboard (.xlsx)
-logs/           → ETL and application logs
+```text
+shopee-bi-dashboard/
+├── backend/               # FastAPI backend & API routers (etl, files, analytics, dashboard)
+├── frontend/              # Next.js 14+ App Router frontend
+│   ├── src/
+│   │   ├── app/           # App router pages (dashboard, upload, settings)
+│   │   │   ├── dashboard/ # Main BI dashboard page
+│   │   │   ├── upload/    # Multi-file upload & management page
+│   │   │   └── layout.tsx # Root layout with global header and sticky footer
+│   │   ├── components/    # Reusable UI components (FilterBar, PivotTable, MarketBasket)
+│   │   └── lib/           # API client and TypeScript interfaces
+│   └── package.json
+├── database/              # DuckDB repository and database connectors
+├── etl/                   # Shopee order export extraction, transformation & loading pipeline
+├── tests/                 # Comprehensive pytest test suite (API, database, ETL, analytics)
+└── README.md
 ```
 
-## Database
+---
 
-DuckDB embedded analytics database is created at `output/warehouse.duckdb` with a star schema:
+## Quick Start Guide
 
-- `orders` — Staging table
-- `dim_customer` — Customer dimension
-- `dim_product` — Product dimension
-- `dim_city` — Geographic city dimension
-- `dim_date` — Calendar dimension
-- `fact_sales` — Sales fact table
+### Prerequisites
+- **Node.js** (v18+ recommended)
+- **Python** (v3.10+)
 
-## Extending for New Marketplaces
+### Installation & Running
 
-1. Create `etl/<marketplace>/` with Extractor, Transformer, Loader
-2. Add column mappings to `config/config.py`
-3. Register the pipeline in `main.py`
-4. Analytics modules work automatically
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/shiddiqeuy/shopee-bi-dashboard.git
+   cd shopee-bi-dashboard
+   ```
 
-## Testing
+2. **Run Backend API**:
+   ```bash
+   python -m uvicorn backend.main:app --reload --port 8000
+   ```
 
-```bash
-pytest tests/
-```
+3. **Run Frontend Development Server**:
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+   Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## License
+---
 
-MIT
+## Contribution & Workflow Guidelines
+
+1. **Branching Strategy**: Create feature branches from `master` (e.g., `feature/your-feature-name` or `fix/...`).
+2. **Issues & Milestones**: Link all pull requests to corresponding GitHub issues and milestones.
+3. **Testing**: Run backend tests (`python -m pytest`) and frontend builds (`npm --prefix frontend run build`) before opening a pull request.
+4. **Attribution**: Always preserve copyright and author attribution (`Created by Muhammad Shiddiq Azis 2026`).
