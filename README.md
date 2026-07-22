@@ -81,6 +81,29 @@ shopee-bi-dashboard/
 
 ---
 
+## Deployment: Vercel Frontend + Render Backend
+
+This monorepo can be deployed as two services from the same GitHub repository.
+
+### Backend on Render
+
+- **Root Directory**: repository root
+- **Build Command**: `pip install -r requirements.txt`
+- **Start Command**: `python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT`
+- **Environment Variable**: `CORS_ORIGINS=https://your-frontend.vercel.app,http://localhost:3000`
+
+`CORS_ORIGINS` accepts a comma-separated list of allowed origins. The local default remains `http://localhost:3000`.
+
+### Frontend on Vercel
+
+- **Root Directory**: `frontend`
+- **Build Command**: `npm run build`
+- **Environment Variable**: `BACKEND_URL=https://your-backend.onrender.com`
+
+The frontend proxies `/api/*` requests to `BACKEND_URL`, so the existing frontend API client can continue using `/api` in both local and production environments.
+
+---
+
 ## Contribution & Workflow Guidelines
 
 Contributions are welcome. If this is your first open source contribution, start with the [Contribution Guide](CONTRIBUTING.md).
