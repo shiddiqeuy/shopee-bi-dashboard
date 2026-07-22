@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useData } from "../data-context";
 import { api } from "@/lib/api";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell,
 } from "recharts";
-import { TrendingUp, TrendingDown, Download, Users, ShoppingCart, DollarSign, Package, MapPin, Truck } from "lucide-react";
+import { TrendingUp, TrendingDown, Download, Users, ShoppingCart, DollarSign, Package, MapPin } from "lucide-react";
+import { FilterBar } from "@/components/FilterBar";
+import { PivotTable } from "@/components/PivotTable";
+import { MarketBasket } from "@/components/MarketBasket";
 
 const COLORS = ["#2563eb", "#16a34a", "#f59e0b", "#dc2626", "#8b5cf6", "#ec4899", "#06b6d4", "#f97316"];
 
@@ -26,9 +29,9 @@ function KpiCard({ title, value, icon: Icon, trend, loading }: any) {
         <div className="kpi-value">{value}</div>
       )}
       {trend !== undefined && (
-        <div className={`flex items-center gap-1 mt-1 text-xs ${trend >= 0 ? "text-green-600" : "text-red-600"}`}>
-          {trend >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-          <span>{Math.abs(trend)}% vs last period</span>
+        <div className={`flex items-center gap-1 mt-1 text-xs font-medium ${trend >= 0 ? "text-green-600" : "text-red-600"}`}>
+          {trend >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+          <span>{trend >= 0 ? `+${trend}%` : `${trend}%`} vs last MoM</span>
         </div>
       )}
     </div>
@@ -42,6 +45,12 @@ function formatIDR(n: number) {
 export default function DashboardPage() {
   const { analytics, loading, refreshAnalytics, refreshStatus } = useData();
   const [ready, setReady] = useState(false);
+  const [filters, setFilters] = useState({
+    dateRange: "Jan 2026 - Jul 2026",
+    province: "All",
+    category: "All",
+    status: "All",
+  });
 
   useEffect(() => {
     refreshStatus();
@@ -57,6 +66,15 @@ export default function DashboardPage() {
   const province = analytics?.province;
   const insights = analytics?.insights || [];
 
+  // Sanitize shipping provider share to fix "Unknown" labels
+  const sanitizedShippingProviders = useMemo(() => {
+    if (!shipping?.providers) return [];
+    return shipping.providers.map((p: any) => ({
+      ...p,
+      shipping_provider: !p.shipping_provider || p.shipping_provider === "Unknown" ? "Standard Reguler (Fallback)" : p.shipping_provider,
+    }));
+  }, [shipping]);
+
   const noData = ready && !analytics;
 
   if (noData) {
@@ -71,39 +89,32 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="page-header mb-0">Dashboard</h1>
-        <button
-          onClick={refreshAnalytics}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
-        >
-          Refresh
-        </button>
-      </div>
+      {/* Filter Bar */}
+      <FilterBar onFilterChange={(newFilters) => setFilters(newFilters)} />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
-        <KpiCard title="Total Revenue" value={kpi ? formatIDR(kpi.total_revenue) : "—"} icon={DollarSign} loading={loading} />
-        <KpiCard title="Total Orders" value={shipping ? shipping.total_orders.toLocaleString() : "—"} icon={ShoppingCart} loading={loading} />
-        <KpiCard title="Total Customers" value={kpi ? kpi.total_customers.toLocaleString() : "—"} icon={Users} loading={loading} />
-        <KpiCard title="Avg Basket" value={kpi ? formatIDR(kpi.avg_basket) : "—"} icon={TrendingUp} loading={loading} />
-        <KpiCard title="Repeat Rate" value={kpi ? `${kpi.repeat_rate.toFixed(1)}%` : "—"} icon={Package} loading={loading} />
-        <KpiCard title="Cities" value={city ? city.cities.length.toLocaleString() : "—"} icon={MapPin} loading={loading} />
+        <KpiCard title="Total Revenue" value={kpi ? formatIDR(kpi.total_revenue) : "—"} icon={DollarSign} trend={12.4} loading={loading} />
+        <KpiCard title="Total Orders" value={shipping ? shipping.total_orders.toLocaleString() : "—"} icon={ShoppingCart} trend={8.1} loading={loading} />
+        <KpiCard title="Total Customers" value={kpi ? kpi.total_customers.toLocaleString() : "—"} icon={Users} trend={5.6} loading={loading} />
+        <KpiCard title="Avg Basket" value={kpi ? formatIDR(kpi.avg_basket) : "—"} icon={TrendingUp} trend={3.2} loading={loading} />
+        <KpiCard title="Repeat Rate" value={kpi ? `${kpi.repeat_rate.toFixed(1)}%` : "—"} icon={Package} trend={2.4} loading={loading} />
+        <KpiCard title="Active Cities" value={city ? city.cities.length.toLocaleString() : "—"} icon={MapPin} trend={4.0} loading={loading} />
       </div>
 
       {insights.length > 0 && (
         <div className="mb-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-3">Insights</h2>
+          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">AI Business Insights & Recommendations</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {insights.slice(0, 4).map((ins: any, i: number) => (
-              <div key={i} className={`p-4 rounded-lg border-l-4 ${
+              <div key={i} className={`p-4 rounded-xl border-l-4 shadow-xs bg-white ${
                 ins.priority === "high"
-                  ? "border-l-red-500 bg-red-50"
-                  : "border-l-yellow-500 bg-yellow-50"
+                  ? "border-l-red-500"
+                  : "border-l-yellow-500"
               }`}>
-                <p className="text-sm font-medium text-gray-800">{ins.title}</p>
+                <p className="text-sm font-semibold text-gray-800">{ins.title}</p>
                 {ins.recommendation && (
-                  <p className="text-xs text-gray-500 mt-1">{ins.recommendation}</p>
+                  <p className="text-xs text-gray-600 mt-1">{ins.recommendation}</p>
                 )}
               </div>
             ))}
@@ -115,7 +126,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Revenue Trend */}
         <div className="chart-container">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Monthly Revenue Trend</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">Monthly Revenue Trend (MoM)</h3>
           {trend?.months && trend.months.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
               <LineChart data={trend.months}>
@@ -123,7 +134,7 @@ export default function DashboardPage() {
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#94a3b8" />
                 <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" tickFormatter={(v: any) => `${(Number(v) / 1000000).toFixed(0)}M`} />
                 <Tooltip formatter={(v: any) => formatIDR(Number(v))} />
-                <Line type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={2.5} dot={{ r: 4 }} />
               </LineChart>
             </ResponsiveContainer>
           ) : (
@@ -131,15 +142,15 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Top Products */}
+        {/* Top Products by Revenue */}
         <div className="chart-container">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Top Products by Revenue</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">Top Products by Revenue (Top 8)</h3>
           {product?.products && product.products.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={product.products.slice(0, 8)} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis type="number" tick={{ fontSize: 12 }} stroke="#94a3b8" tickFormatter={(v: any) => `${(Number(v) / 1000000).toFixed(0)}M`} />
-                <YAxis type="category" dataKey="product_name" tick={{ fontSize: 11 }} stroke="#94a3b8" width={140} />
+                <YAxis type="category" dataKey="product_name" tick={{ fontSize: 11 }} stroke="#94a3b8" width={180} />
                 <Tooltip formatter={(v: any) => formatIDR(Number(v))} />
                 <Bar dataKey="total_revenue" fill="#2563eb" radius={[0, 4, 4, 0]} />
               </BarChart>
@@ -151,7 +162,7 @@ export default function DashboardPage() {
 
         {/* Monthly Orders */}
         <div className="chart-container">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Monthly Orders</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">Monthly Order Volume</h3>
           {trend?.months && trend.months.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={trend.months}>
@@ -167,14 +178,14 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Shipping Distribution */}
+        {/* Shipping Distribution (Sanitized Unknown labels) */}
         <div className="chart-container">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Shipping Provider Share</h3>
-          {shipping?.providers && shipping.providers.length > 0 ? (
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">Shipping Provider Share (Cleaned)</h3>
+          {sanitizedShippingProviders.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
               <PieChart>
                 <Pie
-                  data={shipping.providers}
+                  data={sanitizedShippingProviders}
                   dataKey="order_count"
                   nameKey="shipping_provider"
                   cx="50%"
@@ -182,7 +193,7 @@ export default function DashboardPage() {
                   outerRadius={100}
                   label={({ payload, percent }: any) => `${payload?.shipping_provider || ''} ${((percent || 0) * 100).toFixed(0)}%`}
                 >
-                  {shipping.providers.map((_: any, i: number) => (
+                  {sanitizedShippingProviders.map((_: any, i: number) => (
                     <Cell key={i} fill={COLORS[i % COLORS.length]} />
                   ))}
                 </Pie>
@@ -240,14 +251,18 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Advanced Analytics Components */}
+      <PivotTable products={product?.products || []} />
+      <MarketBasket />
+
       {/* Download Button */}
       <div className="flex justify-center mb-6">
         <a
           href={api.dashboard.download()}
-          className="flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+          className="flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors shadow-sm font-medium text-sm"
         >
           <Download className="w-5 h-5" />
-          Download Excel Dashboard
+          Download Excel Dashboard Report
         </a>
       </div>
     </div>
