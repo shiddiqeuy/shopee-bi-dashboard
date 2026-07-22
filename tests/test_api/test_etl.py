@@ -123,7 +123,7 @@ class TestETLUpload:
         )
 
         assert resp.status_code == 500
-        assert resp.json() == {"detail": "ETL upload failed"}
+        assert resp.json() == {"detail": "Upload atau proses ETL gagal. Cek backend log untuk detail teknis."}
 
     @patch("backend.api.etl.ETLService")
     @patch("backend.api.etl.asyncio.to_thread", side_effect=lambda fn, *a, **kw: fn(*a, **kw))

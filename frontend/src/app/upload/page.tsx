@@ -118,6 +118,7 @@ export default function UploadPage() {
       await refreshStatus();
       if (res.results.some((r) => r.status !== "success")) {
         markFailed(3);
+        setError("Beberapa file gagal diproses. Detail teknis sudah dicatat di backend log.");
       } else {
         markComplete();
       }
@@ -146,6 +147,7 @@ export default function UploadPage() {
       await refreshStatus();
       if (res.status !== "success") {
         markFailed(3);
+        setError(res.error || "File gagal diproses. Detail teknis sudah dicatat di backend log.");
       } else {
         markComplete();
       }
@@ -172,6 +174,7 @@ export default function UploadPage() {
       await refreshStatus();
       if (res.status !== "success") {
         markFailed(3);
+        setError(res.error || "ETL gagal diproses. Detail teknis sudah dicatat di backend log.");
       } else {
         markComplete();
       }
@@ -197,6 +200,7 @@ export default function UploadPage() {
       await refreshStatus();
       if (res.results.some((r) => r.status !== "success")) {
         markFailed(3);
+        setError("Sebagian proses ETL gagal. Detail teknis sudah dicatat di backend log.");
       } else {
         markComplete();
       }
@@ -351,6 +355,9 @@ export default function UploadPage() {
                 <span className={r.status === "success" ? "text-green-600" : "text-red-600"}>
                   {r.status === "success" ? `${r.rows_loaded ?? 0} rows loaded` : "Failed"}
                 </span>
+                {r.status !== "success" && r.error && (
+                  <span className="text-xs text-red-500 md:ml-4">{r.error}</span>
+                )}
               </div>
             ))}
           </div>

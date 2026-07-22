@@ -106,6 +106,19 @@ The frontend proxies `/api/*` requests to `BACKEND_URL`, so the existing fronten
 
 ---
 
+## Upload & ETL Error Logs
+
+Backend upload and ETL failures are logged without exposing stack traces to frontend users.
+
+- Main application log: `logs/shopee_bi.log`
+- Structured ETL run log: `logs/etl_runs.jsonl`
+- Upload errors include file name, content type, file size, and failed stage.
+- ETL errors include job name, source file, failed stage, row counts, error type, message, and stack trace.
+
+Frontend upload and ETL screens show a safe user-facing error message. Check the backend logs above for technical details.
+
+---
+
 ## Contribution & Workflow Guidelines
 
 Contributions are welcome. If this is your first open source contribution, start with the [Contribution Guide](CONTRIBUTING.md).
