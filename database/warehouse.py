@@ -30,12 +30,20 @@ class WarehouseBuilder:
 
     def build(self) -> None:
         log.info("Building warehouse star-schema...")
+        if self._count("orders") == 0:
+            self._clear_warehouse()
+            log.info("Warehouse cleared because staging is empty")
+            return
         self._build_dim_customer()
         self._build_dim_product()
         self._build_dim_city()
         self._build_dim_date()
         self._build_fact_sales()
         log.info("Warehouse build complete")
+
+    def _clear_warehouse(self) -> None:
+        for table in ("dim_customer", "dim_product", "dim_city", "dim_date", "fact_sales"):
+            self.conn.execute(f"CREATE OR REPLACE TABLE {table} AS SELECT * FROM {table} WHERE 1 = 0")
 
     def _build_dim_customer(self) -> None:
         self.conn.execute("""

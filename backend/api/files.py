@@ -33,9 +33,10 @@ async def replace_file(filename: str, file: UploadFile = File(...), repo: DuckDB
     try:
         service = ETLService(repo)
         contents = await file.read()
-        saved_path = await asyncio.to_thread(service.save_upload, contents, filename)
+        await asyncio.to_thread(service.save_upload, contents, filename)
         stage = "etl"
-        result = await asyncio.to_thread(service.run, str(saved_path))
+        rebuild = await asyncio.to_thread(service.rebuild_all)
+        result = next((r for r in rebuild.get("results", []) if r.get("filename") == filename), rebuild)
         return {
             "filename": filename,
             "replaced": True,
@@ -59,20 +60,24 @@ async def replace_file(filename: str, file: UploadFile = File(...), repo: DuckDB
 
 
 @router.delete("/{filename}")
-def delete_file(filename: str):
+def delete_file(filename: str, repo: DuckDBRepository = Depends(get_repo)):
     try:
+        service = ETLService(repo)
         deleted = ETLService.delete_file(filename)
-        return {"deleted": deleted}
+        rebuild = service.rebuild_all()
+        return {"deleted": deleted, "total_rows": rebuild.get("total_rows", 0)}
     except Exception as exc:
         log_error_context(log, "Failed to delete file", exc=exc, stage="files", filename=filename)
         return JSONResponse(status_code=500, content={"detail": "Failed to delete file"})
 
 
 @router.post("/clear")
-def clear_all():
+def clear_all(repo: DuckDBRepository = Depends(get_repo)):
     try:
+        service = ETLService(repo)
         count = ETLService.clear_all()
-        return {"deleted_count": count}
+        rebuild = service.rebuild_all()
+        return {"deleted_count": count, "total_rows": rebuild.get("total_rows", 0)}
     except Exception as exc:
         log_error_context(log, "Failed to clear files", exc=exc, stage="files")
         return JSONResponse(status_code=500, content={"detail": "Failed to clear files"})

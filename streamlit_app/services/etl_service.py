@@ -97,6 +97,52 @@ class ETLService:
 
         return result
 
+    def rebuild_all(self) -> dict:
+        """Rebuild staging and warehouse from files currently in INPUT_DIR."""
+        migrate(self.repo.conn)
+        self.repo.clear_staging()
+
+        pipeline = ShopeeETLPipeline(self.repo)
+        results = []
+        total_loaded = 0
+
+        for file_info in self.list_files():
+            filename = file_info["name"]
+            try:
+                rows = pipeline.run(file_info["path"])
+                total_loaded += rows
+                results.append({
+                    "filename": filename,
+                    "rows_loaded": rows,
+                    "warehouse_built": False,
+                    "total_rows": total_loaded,
+                    "status": "success",
+                })
+            except Exception as exc:
+                log.exception("ETL rebuild failed for %s", filename)
+                results.append({
+                    "filename": filename,
+                    "rows_loaded": 0,
+                    "warehouse_built": False,
+                    "total_rows": total_loaded,
+                    "status": "error",
+                    "error": str(exc),
+                })
+
+        self.repo.build_warehouse()
+        final_total = self.repo.staging_count()
+        for result in results:
+            result["warehouse_built"] = True
+            result["total_rows"] = final_total
+
+        return {
+            "results": results,
+            "rows_loaded": total_loaded,
+            "warehouse_built": True,
+            "total_rows": final_total,
+            "status": "success" if all(r["status"] == "success" for r in results) else "partial_error",
+        }
+
 
 def _format_size(size: int) -> str:
     """Format byte size to human-readable string."""
