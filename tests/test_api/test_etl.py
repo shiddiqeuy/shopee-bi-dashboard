@@ -124,3 +124,31 @@ class TestETLUpload:
 
         assert resp.status_code == 500
         assert resp.json() == {"detail": "ETL upload failed"}
+
+    @patch("backend.api.etl.ETLService")
+    @patch("backend.api.etl.asyncio.to_thread", side_effect=lambda fn, *a, **kw: fn(*a, **kw))
+    def test_upload_multiple_success(self, mock_to_thread, mock_etl_service_class, client, mock_repo):
+        instance = mock_etl_service_class.return_value
+        instance.save_upload.side_effect = [Path("/tmp/test1.xlsx"), Path("/tmp/test2.xlsx")]
+        instance.run.return_value = {
+            "rows_loaded": 25,
+            "warehouse_built": True,
+            "total_rows": 50,
+            "status": "success",
+        }
+
+        resp = client.post(
+            "/api/etl/upload-multiple",
+            files=[
+                ("files", ("test1.xlsx", b"content1", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")),
+                ("files", ("test2.xlsx", b"content2", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")),
+            ],
+        )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "results" in data
+        assert len(data["results"]) == 2
+        assert data["results"][0]["filename"] == "test1.xlsx"
+        assert data["results"][0]["rows_loaded"] == 25
+        assert data["results"][1]["filename"] == "test2.xlsx"

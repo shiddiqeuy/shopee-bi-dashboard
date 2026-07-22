@@ -35,6 +35,39 @@ async def upload_file(file: UploadFile = File(...), repo: DuckDBRepository = Dep
         return JSONResponse(status_code=500, content={"detail": "ETL upload failed"})
 
 
+@router.post("/upload-multiple")
+async def upload_multiple_files(files: list[UploadFile] = File(...), repo: DuckDBRepository = Depends(get_repo)):
+    try:
+        service = ETLService(repo)
+        results = []
+        for file in files:
+            try:
+                contents = await file.read()
+                saved_path = await asyncio.to_thread(service.save_upload, contents, file.filename)
+                result = await asyncio.to_thread(service.run, str(saved_path))
+                results.append({
+                    "filename": file.filename,
+                    "rows_loaded": result.get("rows_loaded", 0),
+                    "warehouse_built": result.get("warehouse_built", False),
+                    "total_rows": result.get("total_rows", 0),
+                    "status": result.get("status", "success"),
+                })
+            except Exception as e:
+                log.error("ETL upload failed for file %s\n%s", file.filename, traceback.format_exc())
+                results.append({
+                    "filename": file.filename,
+                    "rows_loaded": 0,
+                    "warehouse_built": False,
+                    "total_rows": 0,
+                    "status": "error",
+                    "error": str(e),
+                })
+        return {"results": results}
+    except Exception:
+        log.error("ETL multiple upload failed\n%s", traceback.format_exc())
+        return JSONResponse(status_code=500, content={"detail": "ETL multiple upload failed"})
+
+
 @router.get("/status")
 def etl_status(repo: DuckDBRepository = Depends(get_repo)):
     try:

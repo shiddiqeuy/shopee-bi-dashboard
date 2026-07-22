@@ -40,6 +40,15 @@ export const api = {
       if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
       return res.json();
     },
+    uploadMultiple: async (files: FileList | File[]): Promise<{ results: ETLResult[] }> => {
+      const form = new FormData();
+      for (const file of Array.from(files)) {
+        form.append("files", file);
+      }
+      const res = await fetch(`${BASE}/etl/upload-multiple`, { method: "POST", body: form });
+      if (!res.ok) throw new Error(`Multiple upload failed: ${res.status}`);
+      return res.json();
+    },
     status: () => fetchJSON<ETLStatus>("/etl/status"),
   },
 
