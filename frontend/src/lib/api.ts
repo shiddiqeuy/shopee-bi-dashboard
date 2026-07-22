@@ -65,5 +65,12 @@ export const api = {
     delete: (name: string) =>
       fetchJSON<{ deleted: boolean }>(`/files/${encodeURIComponent(name)}`, { method: "DELETE" }),
     clear: () => fetchJSON<{ deleted_count: number }>("/files/clear", { method: "POST" }),
+    replace: async (name: string, file: File): Promise<ETLResult & { replaced: boolean }> => {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(`${BASE}/files/${encodeURIComponent(name)}`, { method: "PUT", body: form });
+      if (!res.ok) throw new Error(`File replacement failed: ${res.status}`);
+      return res.json();
+    },
   },
 };
