@@ -1,15 +1,19 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { api, FileInfo, ETLResult } from "@/lib/api";
 import { useData } from "../data-context";
-import { Upload, Trash2, FileSpreadsheet, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { Upload, Trash2, FileSpreadsheet, CheckCircle, XCircle, Loader2, RefreshCw, ArrowUpDown } from "lucide-react";
 
 export default function UploadPage() {
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [uploading, setUploading] = useState(false);
   const [results, setResults] = useState<ETLResult[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<"name" | "date" | "size">("date");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
   const { refreshStatus } = useData();
 
   const loadFiles = useCallback(async () => {
@@ -22,13 +26,13 @@ export default function UploadPage() {
   useEffect(() => { loadFiles(); }, [loadFiles]);
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const selectedFiles = e.target.files;
-    if (!selectedFiles || selectedFiles.length === 0) return;
+    const selected = e.target.files;
+    if (!selected || selected.length === 0) return;
     setUploading(true);
     setResults(null);
     setError(null);
     try {
-      const res = await api.etl.uploadMultiple(selectedFiles);
+      const res = await api.etl.uploadMultiple(selected);
       setResults(res.results);
       await loadFiles();
       await refreshStatus();
@@ -40,22 +44,79 @@ export default function UploadPage() {
     }
   }
 
+  async function handleReplace(name: string, e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const res = await api.files.replace(name, file);
+      setResults([res]);
+      await loadFiles();
+      await refreshStatus();
+    } catch (err: any) {
+      setError(err.message || "File replacement failed");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
+
   async function handleDelete(name: string) {
     await api.files.delete(name);
+    setSelectedFiles((prev) => prev.filter((n) => n !== name));
+    await loadFiles();
+  }
+
+  async function handleBulkDelete() {
+    if (selectedFiles.length === 0) return;
+    for (const name of selectedFiles) {
+      await api.files.delete(name);
+    }
+    setSelectedFiles([]);
     await loadFiles();
   }
 
   async function handleClear() {
     await api.files.clear();
+    setSelectedFiles([]);
     await loadFiles();
   }
+
+  function toggleSelectAll() {
+    if (selectedFiles.length === files.length) {
+      setSelectedFiles([]);
+    } else {
+      setSelectedFiles(files.map((f) => f.name));
+    }
+  }
+
+  function toggleSelectFile(name: string) {
+    setSelectedFiles((prev) =>
+      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
+    );
+  }
+
+  const sortedFiles = useMemo(() => {
+    return [...files].sort((a, b) => {
+      let cmp = 0;
+      if (sortBy === "name") {
+        cmp = a.name.localeCompare(b.name);
+      } else if (sortBy === "date") {
+        cmp = a.modified - b.modified;
+      } else if (sortBy === "size") {
+        cmp = a.size - b.size;
+      }
+      return sortOrder === "asc" ? cmp : -cmp;
+    });
+  }, [files, sortBy, sortOrder]);
 
   const successCount = results?.filter((r) => r.status === "success").length || 0;
   const failCount = results?.filter((r) => r.status !== "success").length || 0;
 
   return (
     <div>
-      <h1 className="page-header">Upload Data</h1>
+      <h1 className="page-header">Upload & File Management</h1>
 
       {/* Upload Area */}
       <div className="bg-white rounded-xl border-2 border-dashed border-gray-300 p-8 mb-6 text-center hover:border-blue-400 transition-colors">
@@ -71,7 +132,7 @@ export default function UploadPage() {
         {uploading && (
           <div className="flex items-center justify-center gap-2 mt-4 text-blue-600">
             <Loader2 className="w-5 h-5 animate-spin" />
-            <span className="text-sm">Processing multiple files ETL pipeline...</span>
+            <span className="text-sm">Processing files & ETL pipeline...</span>
           </div>
         )}
       </div>
@@ -81,14 +142,14 @@ export default function UploadPage() {
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
           <div className="flex items-center gap-2 text-blue-700 font-medium mb-2">
             <CheckCircle className="w-5 h-5" />
-            Batch Upload & ETL Complete ({successCount} succeeded{failCount > 0 ? `, ${failCount} failed` : ""})
+            Operation Complete ({successCount} succeeded{failCount > 0 ? `, ${failCount} failed` : ""})
           </div>
           <div className="space-y-1">
             {results.map((r, i) => (
               <div key={i} className="text-sm flex items-center justify-between text-gray-700 py-1 border-t border-blue-100">
                 <span className="font-medium">{r.filename}</span>
                 <span className={r.status === "success" ? "text-green-600" : "text-red-600"}>
-                  {r.status === "success" ? `${r.rows_loaded} rows loaded` : "Failed"}
+                  {r.status === "success" ? `${r.rows_loaded ?? 0} rows loaded` : "Failed"}
                 </span>
               </div>
             ))}
@@ -106,34 +167,119 @@ export default function UploadPage() {
         </div>
       )}
 
-      {/* File List */}
+      {/* File List & Management */}
       <div className="bg-white rounded-xl border border-gray-200">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h2 className="font-semibold text-gray-800">Uploaded Files ({files.length})</h2>
-          {files.length > 0 && (
-            <button onClick={handleClear} className="text-sm text-red-600 hover:text-red-700">
-              Clear All
-            </button>
-          )}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-wrap gap-3">
+          <div className="flex items-center gap-4">
+            <h2 className="font-semibold text-gray-800">Uploaded Files ({files.length})</h2>
+            {selectedFiles.length > 0 && (
+              <button
+                onClick={handleBulkDelete}
+                className="text-xs bg-red-100 text-red-600 hover:bg-red-200 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 font-medium"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete Selected ({selectedFiles.length})
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 text-xs text-gray-500">
+              <ArrowUpDown className="w-3.5 h-3.5" />
+              <span>Sort by:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="border border-gray-300 rounded px-2 py-1 text-xs bg-white text-gray-700"
+              >
+                <option value="date">Date</option>
+                <option value="name">Name</option>
+                <option value="size">Size</option>
+              </select>
+              <button
+                onClick={() => setSortOrder((o) => (o === "asc" ? "desc" : "asc"))}
+                className="border border-gray-300 rounded px-2 py-1 text-xs bg-white hover:bg-gray-50"
+              >
+                {sortOrder === "asc" ? "ASC" : "DESC"}
+              </button>
+            </div>
+
+            {files.length > 0 && (
+              <button onClick={handleClear} className="text-sm text-red-600 hover:text-red-700 font-medium">
+                Clear All
+              </button>
+            )}
+          </div>
         </div>
+
         {files.length === 0 ? (
           <div className="p-8 text-center text-gray-400 text-sm">No files uploaded yet</div>
         ) : (
-          <div className="divide-y divide-gray-100">
-            {files.map((f) => (
-              <div key={f.name} className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <FileSpreadsheet className="w-5 h-5 text-blue-500" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">{f.name}</p>
-                    <p className="text-xs text-gray-400">{f.size_display}</p>
-                  </div>
-                </div>
-                <button onClick={() => handleDelete(f.name)} className="p-1.5 text-gray-400 hover:text-red-500 transition-colors">
-                  <Trash2 className="w-4 h-4" />
-                </button>
+          <div>
+            <div className="flex items-center px-4 py-2 bg-gray-50 border-b border-gray-100 text-xs font-medium text-gray-500">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={selectedFiles.length === files.length && files.length > 0}
+                  onChange={toggleSelectAll}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span>Name</span>
               </div>
-            ))}
+              <div className="ml-auto flex items-center gap-8 pr-28 text-right">
+                <span>Size</span>
+                <span>Upload Date</span>
+              </div>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {sortedFiles.map((f) => {
+                const isSelected = selectedFiles.includes(f.name);
+                const dateStr = new Date(f.modified * 1000).toLocaleString();
+                return (
+                  <div key={f.name} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelectFile(f.name)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <FileSpreadsheet className="w-5 h-5 text-blue-500" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{f.name}</p>
+                        <p className="text-xs text-gray-400 md:hidden">{f.size_display} • {dateStr}</p>
+                      </div>
+                    </div>
+
+                    <div className="hidden md:flex items-center gap-8 text-xs text-gray-500">
+                      <span>{f.size_display}</span>
+                      <span className="w-36 text-right">{dateStr}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <label className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 border border-gray-300 text-gray-700 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        Replace
+                        <input
+                          type="file"
+                          accept=".xlsx,.xls,.csv"
+                          onChange={(e) => handleReplace(f.name, e)}
+                          className="hidden"
+                          disabled={uploading}
+                        />
+                      </label>
+                      <button
+                        onClick={() => handleDelete(f.name)}
+                        className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                        title="Delete file"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
