@@ -1,0 +1,120 @@
+title: "[Improvement] Short description"
+category: "Ideas"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting an improvement. Use this form to explain the idea before it becomes an official task. Maintainers will review, discuss, prioritize, and decide whether it should be converted into a GitHub Issue.
+
+  - type: textarea
+    id: improvement-summary
+    attributes:
+      label: Improvement summary
+      description: Briefly explain the proposed improvement.
+      placeholder: "Example: Make the dashboard filter easier to use on mobile devices."
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-problem
+    attributes:
+      label: Current problem
+      description: What problem, limitation, or inconvenience currently exists?
+      placeholder: "Example: It is hard to find the right filter when using a small screen."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-change
+    attributes:
+      label: Proposed change
+      description: What do you suggest changing?
+      placeholder: "Example: Group filters into a collapsible section on mobile."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: affected-area
+    attributes:
+      label: Affected area
+      description: Which area of the monorepo would this improvement affect?
+      options:
+        - Frontend
+        - Backend
+        - Database
+        - DevOps / Deployment
+        - Documentation
+        - Testing / QA
+        - Multiple areas
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-benefit
+    attributes:
+      label: Expected benefit
+      description: How would this improvement help users, developers, or the business?
+      placeholder: "Example: Users can complete analysis faster and avoid filter mistakes."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority-suggestion
+    attributes:
+      label: Priority suggestion
+      description: How important do you think this improvement is?
+      options:
+        - Low
+        - Medium
+        - High
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: complexity-estimate
+    attributes:
+      label: Complexity estimate
+      description: How complex do you think this improvement might be?
+      options:
+        - Small
+        - Medium
+        - Large
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: supporting-information
+    attributes:
+      label: Supporting information
+      description: Optional screenshots, links, examples, logs, or references.
+      placeholder: "Add any helpful context here."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: contribution-willingness
+    attributes:
+      label: Contribution willingness
+      description: Let maintainers know how you may be able to help.
+      options:
+        - label: I am willing to help implement this improvement.
+        - label: I can help test this improvement.
+        - label: I am only submitting the idea.
+
+  - type: checkboxes
+    id: contributor-checklist
+    attributes:
+      label: Contributor checklist
+      description: Please confirm before submitting.
+      options:
+        - label: I searched existing Discussions and Issues before submitting.
+          required: true
+        - label: This proposal is not a security vulnerability report.
+          required: true
+        - label: This proposal does not contain sensitive information.
+          required: true
+        - label: I understand this Discussion may be converted into an Issue after review.
+          required: true
