@@ -1,67 +1,51 @@
 "use client";
 
 import { useState } from "react";
-import { Filter, Calendar, MapPin, Tag, CheckCircle2, RotateCcw } from "lucide-react";
+import { Filter, Calendar, MapPin, Tag, CheckCircle2, RotateCcw, Check } from "lucide-react";
 
-interface FilterBarProps {
-  onFilterChange: (filters: {
-    dateRange: string;
-    province: string;
-    category: string;
-    status: string;
-  }) => void;
+interface FilterValues {
+  dateRange: string;
+  province: string;
+  category: string;
+  status: string;
 }
 
+interface FilterBarProps {
+  onFilterChange: (filters: FilterValues) => void;
+}
+
+const DEFAULT_FILTERS: FilterValues = {
+  dateRange: "Jan 2026 - Jul 2026",
+  province: "All",
+  category: "All",
+  status: "All",
+};
+
 export function FilterBar({ onFilterChange }: FilterBarProps) {
-  const [dateRange, setDateRange] = useState("Jan 2026 - Jul 2026");
-  const [province, setProvince] = useState("All");
-  const [category, setCategory] = useState("All");
-  const [status, setStatus] = useState("All");
+  // Draft selection: updated as the user picks values in the dropdowns.
+  const [selected, setSelected] = useState<FilterValues>(DEFAULT_FILTERS);
 
-  const handleApply = (newValues: { dateRange?: string; province?: string; category?: string; status?: string }) => {
-    const updated = {
-      dateRange: newValues.dateRange !== undefined ? newValues.dateRange : dateRange,
-      province: newValues.province !== undefined ? newValues.province : province,
-      category: newValues.category !== undefined ? newValues.category : category,
-      status: newValues.status !== undefined ? newValues.status : status,
-    };
-    if (newValues.dateRange !== undefined) setDateRange(newValues.dateRange);
-    if (newValues.province !== undefined) setProvince(newValues.province);
-    if (newValues.category !== undefined) setCategory(newValues.category);
-    if (newValues.status !== undefined) setStatus(newValues.status);
+  const updateSelected = (patch: Partial<FilterValues>) => {
+    setSelected((prev) => ({ ...prev, ...patch }));
+  };
 
-    onFilterChange(updated);
+  const handleApply = () => {
+    onFilterChange(selected);
   };
 
   const handleReset = () => {
-    setDateRange("Jan 2026 - Jul 2026");
-    setProvince("All");
-    setCategory("All");
-    setStatus("All");
-    onFilterChange({
-      dateRange: "Jan 2026 - Jul 2026",
-      province: "All",
-      category: "All",
-      status: "All",
-    });
+    setSelected(DEFAULT_FILTERS);
+    onFilterChange(DEFAULT_FILTERS);
   };
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 shadow-sm">
-      <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
-        <div className="flex items-center gap-2 text-gray-800 font-semibold text-sm">
-          <Filter className="w-4 h-4 text-blue-600" />
-          <span>Global Dashboard Filters</span>
-        </div>
-        <button
-          onClick={handleReset}
-          className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 transition-colors"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-          Reset Filters
-        </button>
+      <div className="flex items-center gap-2 text-gray-800 font-semibold text-sm mb-3 pb-2 border-b border-gray-100">
+        <Filter className="w-4 h-4 text-blue-600" />
+        <span>Global Dashboard Filters</span>
       </div>
 
+      {/* Row 1: filter fields */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Date Range */}
         <div>
@@ -70,8 +54,8 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
             Date Range
           </label>
           <select
-            value={dateRange}
-            onChange={(e) => handleApply({ dateRange: e.target.value })}
+            value={selected.dateRange}
+            onChange={(e) => updateSelected({ dateRange: e.target.value })}
             className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="Jan 2026 - Jul 2026">Jan 2026 - Jul 2026 (Default)</option>
@@ -89,8 +73,8 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
             Province / Region
           </label>
           <select
-            value={province}
-            onChange={(e) => handleApply({ province: e.target.value })}
+            value={selected.province}
+            onChange={(e) => updateSelected({ province: e.target.value })}
             className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="All">All Provinces</option>
@@ -110,8 +94,8 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
             Product Category
           </label>
           <select
-            value={category}
-            onChange={(e) => handleApply({ category: e.target.value })}
+            value={selected.category}
+            onChange={(e) => updateSelected({ category: e.target.value })}
             className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="All">All Categories</option>
@@ -129,8 +113,8 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
             Order Status
           </label>
           <select
-            value={status}
-            onChange={(e) => handleApply({ status: e.target.value })}
+            value={selected.status}
+            onChange={(e) => updateSelected({ status: e.target.value })}
             className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="All">All Statuses (Completed & Active)</option>
@@ -139,6 +123,24 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
             <option value="Cancelled">Cancelled / Dibatalkan</option>
           </select>
         </div>
+      </div>
+
+      {/* Row 2: explicit actions — dropdown changes only update local selection above */}
+      <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
+        <button
+          onClick={handleReset}
+          className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 hover:text-blue-600 border border-gray-300 rounded-lg hover:border-blue-300 transition-colors"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          Reset Filters
+        </button>
+        <button
+          onClick={handleApply}
+          className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <Check className="w-3.5 h-3.5" />
+          Apply Filters
+        </button>
       </div>
     </div>
   );
