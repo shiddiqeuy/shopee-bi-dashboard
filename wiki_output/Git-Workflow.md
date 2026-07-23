@@ -1,6 +1,6 @@
-# 🚀 Git Workflow - Antigravity
+# 🚀 Git Workflow
 
-Selamat datang di panduan resmi alur kerja (workflow) Git untuk project **Antigravity**. Dokumen ini dirancang sebagai panduan bagi seluruh tim developer agar dapat berkolaborasi dengan rapi, efisien, dan meminimalkan konflik kode.
+Selamat datang di panduan resmi alur kerja (workflow) Git untuk project ini. Dokumen ini dirancang sebagai panduan bagi seluruh tim developer agar dapat berkolaborasi dengan rapi, efisien, dan meminimalkan konflik kode.
 
 ---
 
