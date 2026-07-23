@@ -41,31 +41,32 @@ class TestFilesAPI:
         assert resp.status_code == 200
         assert resp.json() == {"files": [{"name": "test.xlsx", "size": 100, "size_display": "100 B", "modified": 1234567890}]}
 
-    @patch("backend.api.files.ETLService.delete_file")
-    def test_delete_file(self, mock_delete, client):
-        mock_delete.return_value = True
+    @patch("backend.api.files.ETLService")
+    def test_delete_file(self, mock_etl_service_class, client):
+        mock_etl_service_class.delete_file.return_value = True
+        mock_etl_service_class.return_value.rebuild_all.return_value = {"total_rows": 0}
         resp = client.delete("/api/files/test.xlsx")
         assert resp.status_code == 200
-        assert resp.json() == {"deleted": True}
-        mock_delete.assert_called_once_with("test.xlsx")
+        assert resp.json() == {"deleted": True, "total_rows": 0}
+        mock_etl_service_class.delete_file.assert_called_once_with("test.xlsx")
 
-    @patch("backend.api.files.ETLService.clear_all")
-    def test_clear_files(self, mock_clear, client):
-        mock_clear.return_value = 3
+    @patch("backend.api.files.ETLService")
+    def test_clear_files(self, mock_etl_service_class, client):
+        mock_etl_service_class.clear_all.return_value = 3
+        mock_etl_service_class.return_value.rebuild_all.return_value = {"total_rows": 0}
         resp = client.post("/api/files/clear")
         assert resp.status_code == 200
-        assert resp.json() == {"deleted_count": 3}
+        assert resp.json() == {"deleted_count": 3, "total_rows": 0}
 
     @patch("backend.api.files.ETLService")
     @patch("backend.api.files.asyncio.to_thread", side_effect=lambda fn, *a, **kw: fn(*a, **kw))
     def test_replace_file(self, mock_to_thread, mock_etl_service_class, client, mock_repo):
         instance = mock_etl_service_class.return_value
         instance.save_upload.return_value = Path("/tmp/test.xlsx")
-        instance.run.return_value = {
-            "rows_loaded": 30,
-            "warehouse_built": True,
-            "total_rows": 30,
-            "status": "success",
+        instance.rebuild_all.return_value = {
+            "results": [
+                {"filename": "test.xlsx", "rows_loaded": 30, "warehouse_built": True, "total_rows": 30, "status": "success"},
+            ]
         }
 
         resp = client.put(
@@ -80,4 +81,4 @@ class TestFilesAPI:
         assert data["rows_loaded"] == 30
         assert data["status"] == "success"
         instance.save_upload.assert_called_once()
-        instance.run.assert_called_once()
+        instance.rebuild_all.assert_called_once()

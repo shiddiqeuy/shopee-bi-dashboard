@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import traceback
 
 from fastapi import APIRouter, Depends, UploadFile, File
 from fastapi.responses import JSONResponse
@@ -9,29 +8,35 @@ from fastapi.responses import JSONResponse
 from database.repository import DuckDBRepository
 from backend.deps import get_repo
 from streamlit_app.services.etl_service import ETLService
-from utils.logger import get_logger
+from utils.logger import get_logger, log_error_context
 
 log = get_logger(__name__)
 
 router = APIRouter()
+
+PUBLIC_FILE_ERROR = "Upload atau proses ETL gagal. Cek backend log untuk detail teknis."
 
 
 @router.get("/")
 def list_files():
     try:
         return {"files": ETLService.list_files()}
-    except Exception:
-        log.error("Failed to list files\n%s", traceback.format_exc())
+    except Exception as exc:
+        log_error_context(log, "Failed to list files", exc=exc, stage="files")
         return JSONResponse(status_code=500, content={"detail": "Failed to list files"})
 
 
 @router.put("/{filename}")
 async def replace_file(filename: str, file: UploadFile = File(...), repo: DuckDBRepository = Depends(get_repo)):
+    contents: bytes | None = None
+    stage = "upload"
     try:
         service = ETLService(repo)
         contents = await file.read()
-        saved_path = await asyncio.to_thread(service.save_upload, contents, filename)
-        result = await asyncio.to_thread(service.run, str(saved_path))
+        await asyncio.to_thread(service.save_upload, contents, filename)
+        stage = "etl"
+        rebuild = await asyncio.to_thread(service.rebuild_all)
+        result = next((r for r in rebuild.get("results", []) if r.get("filename") == filename), rebuild)
         return {
             "filename": filename,
             "replaced": True,
@@ -40,26 +45,39 @@ async def replace_file(filename: str, file: UploadFile = File(...), repo: DuckDB
             "total_rows": result.get("total_rows", 0),
             "status": result.get("status", "success"),
         }
-    except Exception:
-        log.error("Failed to replace file %s\n%s", filename, traceback.format_exc())
-        return JSONResponse(status_code=500, content={"detail": "Failed to replace file"})
+    except Exception as exc:
+        log_error_context(
+            log,
+            "Failed to replace file",
+            exc=exc,
+            stage=stage,
+            filename=filename,
+            uploaded_filename=file.filename,
+            content_type=file.content_type,
+            size_bytes=len(contents) if contents is not None else None,
+        )
+        return JSONResponse(status_code=500, content={"detail": PUBLIC_FILE_ERROR})
 
 
 @router.delete("/{filename}")
-def delete_file(filename: str):
+def delete_file(filename: str, repo: DuckDBRepository = Depends(get_repo)):
     try:
+        service = ETLService(repo)
         deleted = ETLService.delete_file(filename)
-        return {"deleted": deleted}
-    except Exception:
-        log.error("Failed to delete file %s\n%s", filename, traceback.format_exc())
+        rebuild = service.rebuild_all()
+        return {"deleted": deleted, "total_rows": rebuild.get("total_rows", 0)}
+    except Exception as exc:
+        log_error_context(log, "Failed to delete file", exc=exc, stage="files", filename=filename)
         return JSONResponse(status_code=500, content={"detail": "Failed to delete file"})
 
 
 @router.post("/clear")
-def clear_all():
+def clear_all(repo: DuckDBRepository = Depends(get_repo)):
     try:
+        service = ETLService(repo)
         count = ETLService.clear_all()
-        return {"deleted_count": count}
-    except Exception:
-        log.error("Failed to clear files\n%s", traceback.format_exc())
+        rebuild = service.rebuild_all()
+        return {"deleted_count": count, "total_rows": rebuild.get("total_rows", 0)}
+    except Exception as exc:
+        log_error_context(log, "Failed to clear files", exc=exc, stage="files")
         return JSONResponse(status_code=500, content={"detail": "Failed to clear files"})

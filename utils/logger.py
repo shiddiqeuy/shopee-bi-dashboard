@@ -10,9 +10,12 @@ Import and use:
 from __future__ import annotations
 
 import logging
+import json
 import sys
+import traceback
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from typing import Any
 
 from config.config import LOG_DIR, LOG_FORMAT, LOG_DATE_FORMAT, LOG_LEVEL
 
@@ -61,3 +64,17 @@ _setup_root_logger()
 def get_logger(name: str) -> logging.Logger:
     """Return a named logger child of the pre-configured root."""
     return logging.getLogger(name)
+
+
+def log_error_context(logger: logging.Logger, message: str, **context: Any) -> None:
+    """Log an error with machine-readable context for upload and ETL failures."""
+    exc = context.pop("exc", None)
+    record = {
+        "event": message,
+        "context": context,
+    }
+    if exc is not None:
+        record["error_type"] = type(exc).__name__
+        record["error_message"] = str(exc)
+        record["stack_trace"] = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    logger.error(json.dumps(record, default=str, ensure_ascii=False))

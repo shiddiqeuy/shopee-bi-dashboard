@@ -81,6 +81,44 @@ shopee-bi-dashboard/
 
 ---
 
+## Deployment: Vercel Frontend + Railway Backend
+
+This monorepo can be deployed as two services from the same GitHub repository.
+
+### Backend on Railway
+
+- **Root Directory**: repository root
+- **Build Command**: `pip install -r requirements.txt`
+- **Start Command**: `python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT`
+- **Environment Variable**: `CORS_ORIGINS=https://your-frontend.vercel.app,http://localhost:3000`
+- **Health Check Path**: `/api/health`
+
+`CORS_ORIGINS` accepts a comma-separated list of allowed origins. The local default remains `http://localhost:3000`.
+
+### Frontend on Vercel
+
+- **Root Directory**: `frontend`
+- **Install Command**: `npm ci`
+- **Build Command**: `npm run build`
+- **Environment Variable**: `BACKEND_URL=https://<your-railway-backend-url>`
+
+The frontend proxies `/api/*` requests to `BACKEND_URL`, so the existing frontend API client can continue using `/api` in both local and production environments.
+
+---
+
+## Upload & ETL Error Logs
+
+Backend upload and ETL failures are logged without exposing stack traces to frontend users.
+
+- Main application log: `logs/shopee_bi.log`
+- Structured ETL run log: `logs/etl_runs.jsonl`
+- Upload errors include file name, content type, file size, and failed stage.
+- ETL errors include job name, source file, failed stage, row counts, error type, message, and stack trace.
+
+Frontend upload and ETL screens show a safe user-facing error message. Check the backend logs above for technical details.
+
+---
+
 ## Contribution & Workflow Guidelines
 
 Contributions are welcome. If this is your first open source contribution, start with the [Contribution Guide](CONTRIBUTING.md).

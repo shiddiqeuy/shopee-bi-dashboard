@@ -1,9 +1,19 @@
 const BASE = "/api";
 
+async function errorFromResponse(res: Response, fallback: string): Promise<Error> {
+  try {
+    const body = await res.json();
+    const message = body?.detail || body?.error || fallback;
+    return new Error(message);
+  } catch {
+    return new Error(fallback);
+  }
+}
+
 async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${url}`, init);
   if (!res.ok) {
-    throw new Error(`API error: ${res.status} ${res.statusText}`);
+    throw await errorFromResponse(res, `API error: ${res.status} ${res.statusText}`);
   }
   return res.json();
 }
@@ -22,11 +32,23 @@ export interface ETLResult {
   warehouse_built: boolean;
   total_rows: number;
   status: string;
+  error?: string;
 }
 
 export interface ETLStatus {
   data_available: boolean;
   total_rows: number;
+}
+
+export interface ETLLogEntry {
+  timestamp: string;
+  source_file: string;
+  rows_extracted: number;
+  rows_loaded: number;
+  rows_invalid: number;
+  status: string;
+  error_message?: string | null;
+  extra?: Record<string, unknown>;
 }
 
 export const api = {
@@ -37,7 +59,7 @@ export const api = {
       const form = new FormData();
       form.append("file", file);
       const res = await fetch(`${BASE}/etl/upload`, { method: "POST", body: form });
-      if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+      if (!res.ok) throw await errorFromResponse(res, `Upload failed: ${res.status}`);
       return res.json();
     },
     uploadMultiple: async (files: FileList | File[]): Promise<{ results: ETLResult[] }> => {
@@ -46,10 +68,11 @@ export const api = {
         form.append("files", file);
       }
       const res = await fetch(`${BASE}/etl/upload-multiple`, { method: "POST", body: form });
-      if (!res.ok) throw new Error(`Multiple upload failed: ${res.status}`);
+      if (!res.ok) throw await errorFromResponse(res, `Multiple upload failed: ${res.status}`);
       return res.json();
     },
     status: () => fetchJSON<ETLStatus>("/etl/status"),
+    logs: (limit = 25) => fetchJSON<{ logs: ETLLogEntry[] }>(`/etl/logs?limit=${limit}`),
     reload: (filename: string): Promise<ETLResult> =>
       fetchJSON<ETLResult>(`/etl/reload/${encodeURIComponent(filename)}`, { method: "POST" }),
     reloadAll: (): Promise<{ results: ETLResult[] }> =>
@@ -59,7 +82,7 @@ export const api = {
   },
 
   analytics: {
-    compute: () => fetchJSON<any>("/analytics/compute"),
+    compute: () => fetchJSON<unknown>("/analytics/compute"),
   },
 
   dashboard: {
@@ -75,7 +98,7 @@ export const api = {
       const form = new FormData();
       form.append("file", file);
       const res = await fetch(`${BASE}/files/${encodeURIComponent(name)}`, { method: "PUT", body: form });
-      if (!res.ok) throw new Error(`File replacement failed: ${res.status}`);
+      if (!res.ok) throw await errorFromResponse(res, `File replacement failed: ${res.status}`);
       return res.json();
     },
   },

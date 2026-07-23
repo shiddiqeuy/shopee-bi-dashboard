@@ -64,7 +64,7 @@ class TestETLUpload:
     def test_upload_success(self, mock_to_thread, mock_etl_service_class, client, mock_repo):
         instance = mock_etl_service_class.return_value
         instance.save_upload.return_value = Path("/tmp/upload.xlsx")
-        instance.run.return_value = {
+        instance.rebuild_all.return_value = {
             "rows_loaded": 50,
             "warehouse_built": True,
             "total_rows": 50,
@@ -87,14 +87,14 @@ class TestETLUpload:
 
         mock_etl_service_class.assert_called_once_with(mock_repo)
         instance.save_upload.assert_called_once()
-        instance.run.assert_called_once()
+        instance.rebuild_all.assert_called_once()
 
     @patch("backend.api.etl.ETLService")
     @patch("backend.api.etl.asyncio.to_thread", side_effect=lambda fn, *a, **kw: fn(*a, **kw))
     def test_upload_zero_rows(self, mock_to_thread, mock_etl_service_class, client, mock_repo):
         instance = mock_etl_service_class.return_value
         instance.save_upload.return_value = Path("/tmp/empty.xlsx")
-        instance.run.return_value = {
+        instance.rebuild_all.return_value = {
             "rows_loaded": 0,
             "status": "success",
         }
@@ -123,18 +123,20 @@ class TestETLUpload:
         )
 
         assert resp.status_code == 500
-        assert resp.json() == {"detail": "ETL upload failed"}
+        assert resp.json() == {"detail": "Upload atau proses ETL gagal. Cek backend log untuk detail teknis."}
 
     @patch("backend.api.etl.ETLService")
     @patch("backend.api.etl.asyncio.to_thread", side_effect=lambda fn, *a, **kw: fn(*a, **kw))
     def test_upload_multiple_success(self, mock_to_thread, mock_etl_service_class, client, mock_repo):
         instance = mock_etl_service_class.return_value
         instance.save_upload.side_effect = [Path("/tmp/test1.xlsx"), Path("/tmp/test2.xlsx")]
-        instance.run.return_value = {
-            "rows_loaded": 25,
+        instance.rebuild_all.return_value = {
+            "results": [
+                {"filename": "test1.xlsx", "rows_loaded": 25, "warehouse_built": True, "total_rows": 50, "status": "success"},
+                {"filename": "test2.xlsx", "rows_loaded": 25, "warehouse_built": True, "total_rows": 50, "status": "success"},
+            ],
             "warehouse_built": True,
             "total_rows": 50,
-            "status": "success",
         }
 
         resp = client.post(
@@ -163,11 +165,10 @@ class TestETLUpload:
         mock_input_dir.__truediv__.return_value = mock_path
 
         instance = mock_etl_service_class.return_value
-        instance.run.return_value = {
-            "rows_loaded": 15,
-            "warehouse_built": True,
-            "total_rows": 15,
-            "status": "success",
+        instance.rebuild_all.return_value = {
+            "results": [
+                {"filename": "test.xlsx", "rows_loaded": 15, "warehouse_built": True, "total_rows": 15, "status": "success"},
+            ]
         }
 
         resp = client.post("/api/etl/reload/test.xlsx")
@@ -182,12 +183,10 @@ class TestETLUpload:
     @patch("backend.api.etl.asyncio.to_thread", side_effect=lambda fn, *a, **kw: fn(*a, **kw))
     def test_reload_all_success(self, mock_to_thread, mock_etl_service_class, mock_input_dir, client, mock_repo):
         instance = mock_etl_service_class.return_value
-        mock_etl_service_class.list_files.return_value = [{"name": "test1.xlsx", "path": "/tmp/test1.xlsx"}]
-        instance.run.return_value = {
-            "rows_loaded": 10,
-            "warehouse_built": True,
-            "total_rows": 10,
-            "status": "success",
+        instance.rebuild_all.return_value = {
+            "results": [
+                {"filename": "test1.xlsx", "rows_loaded": 10, "warehouse_built": True, "total_rows": 10, "status": "success"},
+            ]
         }
 
         resp = client.post("/api/etl/reload-all")

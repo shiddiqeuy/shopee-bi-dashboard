@@ -10,7 +10,7 @@ from etl.shopee.extractor import ShopeeExtractor
 from etl.shopee.loader import ShopeeLoader
 from etl.shopee.transformer import ShopeeTransformer
 from utils.decorators import log_etl, measure_time
-from utils.logger import get_logger
+from utils.logger import get_logger, log_error_context
 
 log = get_logger(__name__)
 
@@ -32,19 +32,32 @@ class ShopeeETLPipeline(ETLPipeline):
         rows_loaded = 0
         status = "success"
         error_message = None
+        stage = "extract"
 
         try:
             raw_rows = list(self.extractor.extract(source_path))
             rows_extracted = len(raw_rows)
 
+            stage = "transform"
             df = self.transformer.transform(raw_rows)
             rows_invalid = rows_extracted - len(df)
 
+            stage = "load"
             rows_loaded = self.loader.load(df)
         except Exception as exc:
             status = "failed"
             error_message = str(exc)
-            log.exception("Shopee ETL pipeline failed for %s", source_path)
+            log_error_context(
+                log,
+                "Shopee ETL pipeline failed",
+                exc=exc,
+                job="shopee_etl",
+                source_file=source_path,
+                stage=stage,
+                rows_extracted=rows_extracted,
+                rows_loaded=rows_loaded,
+                rows_invalid=rows_invalid,
+            )
             raise
         finally:
             self.log_writer.write_run(
@@ -54,6 +67,7 @@ class ShopeeETLPipeline(ETLPipeline):
                 rows_invalid=rows_invalid,
                 status=status,
                 error_message=error_message,
+                extra={"job": "shopee_etl", "stage": stage},
             )
 
         return rows_loaded
