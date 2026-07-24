@@ -12,6 +12,7 @@ import { TrendingUp, TrendingDown, Download, Users, ShoppingCart, DollarSign, Pa
 import { FilterBar } from "@/components/FilterBar";
 import { PivotTable } from "@/components/PivotTable";
 import { MarketBasket } from "@/components/MarketBasket";
+import { RecentOrders } from "@/components/RecentOrders";
 
 const COLORS = ["#2563eb", "#16a34a", "#f59e0b", "#dc2626", "#8b5cf6", "#ec4899", "#06b6d4", "#f97316"];
 
@@ -373,6 +374,9 @@ export default function DashboardPage() {
       {/* Advanced Analytics Components */}
       <PivotTable products={products} />
       <MarketBasket />
+      
+      {/* Recent Orders List */}
+      <RecentOrders orders={filteredAnalytics?.raw_data || []} />
 
       {/* Download Button */}
       <div className="flex justify-center mb-6">
