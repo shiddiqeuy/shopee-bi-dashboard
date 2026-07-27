@@ -20,7 +20,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<DataState>({
     analytics: null,
     status: null,
-    loading: false,
+    // app is always loading until the initial fetch completes
+    loading: true,
   });
 
   const refreshAnalytics = useCallback(async () => {

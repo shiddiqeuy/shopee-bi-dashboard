@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Filter, Calendar, MapPin, Tag, CheckCircle2, RotateCcw, X } from "lucide-react";
+import { Filter, Calendar, MapPin, Tag, CheckCircle2, RotateCcw, X, Loader2 } from "lucide-react";
 
 interface FilterBarProps {
+  loading?: boolean;
   onFilterChange: (filters: {
     dateRange: string;
     province: string;
@@ -12,7 +13,7 @@ interface FilterBarProps {
   }) => void;
 }
 
-export function FilterBar({ onFilterChange }: FilterBarProps) {
+export function FilterBar({ onFilterChange, loading }: FilterBarProps) {
   // Main state (applied filters)
   const [dateRange, setDateRange] = useState("Jan 2026 - Jul 2026");
   const [province, setProvince] = useState("All");
@@ -124,12 +125,14 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
           <div className="flex items-center gap-2 text-gray-800 font-semibold text-sm">
             <Filter className="w-4 h-4 text-blue-600" />
             <span>Global Dashboard Filters</span>
+            {loading && <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />}
           </div>
           
           {/* Desktop Reset Button */}
           <button
             onClick={handleReset}
-            className="hidden md:flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 transition-colors"
+            disabled={loading}
+            className="hidden md:flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             Reset Filters
@@ -138,7 +141,8 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
           {/* Mobile Filter Trigger Button */}
           <button
             onClick={openDrawer}
-            className="md:hidden flex items-center gap-1 text-xs text-blue-600 font-medium hover:text-blue-700 transition-colors bg-blue-50 px-3 py-1.5 rounded-md"
+            disabled={loading}
+            className="md:hidden flex items-center gap-1 text-xs text-blue-600 font-medium hover:text-blue-700 transition-colors bg-blue-50 px-3 py-1.5 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Filter className="w-3.5 h-3.5" />
             Filter Data
@@ -156,7 +160,8 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
             <select
               value={dateRange}
               onChange={(e) => handleApply({ dateRange: e.target.value })}
-              className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={loading}
+              className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <option value="Jan 2026 - Jul 2026">Jan 2026 - Jul 2026 (Default)</option>
               <option value="Q1 2026">Q1 2026 (Jan - Mar)</option>
@@ -175,7 +180,8 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
             <select
               value={province}
               onChange={(e) => handleApply({ province: e.target.value })}
-              className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={loading}
+              className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <option value="All">All Provinces</option>
               <option value="DKI Jakarta">DKI Jakarta</option>
@@ -196,7 +202,8 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
             <select
               value={category}
               onChange={(e) => handleApply({ category: e.target.value })}
-              className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={loading}
+              className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <option value="All">All Categories</option>
               <option value="Horeca & Beverage">Horeca & Beverage Ingredients</option>
@@ -215,7 +222,8 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
             <select
               value={status}
               onChange={(e) => handleApply({ status: e.target.value })}
-              className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={loading}
+              className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <option value="All">All Statuses (Completed & Active)</option>
               <option value="Completed">Completed / Selesai</option>
@@ -274,7 +282,8 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
                 <select
                   value={tempDateRange}
                   onChange={(e) => setTempDateRange(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="Jan 2026 - Jul 2026">Jan 2026 - Jul 2026 (Default)</option>
                   <option value="Q1 2026">Q1 2026 (Jan - Mar)</option>
@@ -293,7 +302,8 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
                 <select
                   value={tempProvince}
                   onChange={(e) => setTempProvince(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="All">All Provinces</option>
                   <option value="DKI Jakarta">DKI Jakarta</option>
@@ -314,7 +324,8 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
                 <select
                   value={tempCategory}
                   onChange={(e) => setTempCategory(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="All">All Categories</option>
                   <option value="Horeca & Beverage">Horeca & Beverage Ingredients</option>
@@ -333,7 +344,8 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
                 <select
                   value={tempStatus}
                   onChange={(e) => setTempStatus(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="All">All Statuses (Completed & Active)</option>
                   <option value="Completed">Completed / Selesai</option>
@@ -347,14 +359,16 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
             <div className="absolute bottom-0 w-full p-4 border-t border-gray-100 flex gap-3 bg-white rounded-b-2xl shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
               <button
                 onClick={resetMobileFilters}
-                className="flex-1 py-2.5 px-4 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
+                disabled={loading}
+                className="flex-1 py-2.5 px-4 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <RotateCcw className="w-4 h-4" />
                 Reset
               </button>
               <button
                 onClick={applyMobileFilters}
-                className="flex-1 py-2.5 px-4 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                disabled={loading}
+                className="flex-1 py-2.5 px-4 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Apply Filters
               </button>

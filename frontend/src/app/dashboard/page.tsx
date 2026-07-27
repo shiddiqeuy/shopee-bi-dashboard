@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { useData } from "../data-context";
 import { api } from "@/lib/api";
 import {
@@ -20,6 +20,24 @@ type RawRow = Record<string, unknown>;
 type AnalyticsPayload = Record<string, unknown> & { raw_data?: RawRow[] };
 type MetricGroup = Record<string, string | number>;
 type PieLabelArgs = { payload?: Record<string, unknown>; percent?: number };
+
+function ChartSkeleton() {
+  return <div className="h-[280px] w-full bg-gray-200 rounded-lg animate-pulse" />;
+}
+
+function FadeIn({ children }: { children: ReactNode }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    // Small delay ensures the browser has rendered the opacity-0 state first
+    const timer = setTimeout(() => setVisible(true), 10);
+    return () => clearTimeout(timer);
+  }, []);
+  return (
+    <div className={`transition-opacity duration-300 ${visible ? "opacity-100" : "opacity-0"}`}>
+      {children}
+    </div>
+  );
+}
 
 function KpiCard({ title, value, icon: Icon, trend, loading }: {
   title: string;
@@ -210,7 +228,7 @@ export default function DashboardPage() {
   return (
     <div>
       {/* Filter Bar */}
-      <FilterBar onFilterChange={(newFilters) => setFilters(newFilters)} />
+      <FilterBar onFilterChange={(newFilters) => setFilters(newFilters)} loading={loading} />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
@@ -247,81 +265,105 @@ export default function DashboardPage() {
         {/* Revenue Trend */}
         <div className="chart-container">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Monthly Revenue Trend (MoM)</h3>
-          {trendMonths.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={trendMonths}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#94a3b8" />
-                <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" tickFormatter={(v: unknown) => `${(Number(v) / 1000000).toFixed(0)}M`} />
-                <Tooltip formatter={(v: unknown) => formatIDR(Number(v))} />
-                <Line type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={2.5} dot={{ r: 4 }} />
-              </LineChart>
-            </ResponsiveContainer>
+          {loading ? (
+            <ChartSkeleton />
+          ) : trendMonths.length > 0 ? (
+            <FadeIn>
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart data={trendMonths}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#94a3b8" />
+                  <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" tickFormatter={(v: unknown) => `${(Number(v) / 1000000).toFixed(0)}M`} />
+                  <Tooltip formatter={(v: unknown) => formatIDR(Number(v))} />
+                  <Line type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={2.5} dot={{ r: 4 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </FadeIn>
           ) : (
-            <div className="h-[280px] flex items-center justify-center text-gray-400 text-sm">No trend data</div>
+            <FadeIn>
+              <div className="h-[280px] flex items-center justify-center text-gray-400 text-sm">No trend data</div>
+            </FadeIn>
           )}
         </div>
 
         {/* Top Products by Revenue */}
         <div className="chart-container">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Top Products by Revenue (Top 8)</h3>
-          {products.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={products.slice(0, 8)} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis type="number" tick={{ fontSize: 12 }} stroke="#94a3b8" tickFormatter={(v: unknown) => `${(Number(v) / 1000000).toFixed(0)}M`} />
-                <YAxis type="category" dataKey="product_name" tick={{ fontSize: 11 }} stroke="#94a3b8" width={180} />
-                <Tooltip formatter={(v: unknown) => formatIDR(Number(v))} />
-                <Bar dataKey="total_revenue" fill="#2563eb" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          {loading ? (
+            <ChartSkeleton />
+          ) : products.length > 0 ? (
+            <FadeIn>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={products.slice(0, 8)} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis type="number" tick={{ fontSize: 12 }} stroke="#94a3b8" tickFormatter={(v: unknown) => `${(Number(v) / 1000000).toFixed(0)}M`} />
+                  <YAxis type="category" dataKey="product_name" tick={{ fontSize: 11 }} stroke="#94a3b8" width={180} />
+                  <Tooltip formatter={(v: unknown) => formatIDR(Number(v))} />
+                  <Bar dataKey="total_revenue" fill="#2563eb" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </FadeIn>
           ) : (
-            <div className="h-[280px] flex items-center justify-center text-gray-400 text-sm">No product data</div>
+            <FadeIn>
+              <div className="h-[280px] flex items-center justify-center text-gray-400 text-sm">No product data</div>
+            </FadeIn>
           )}
         </div>
 
         {/* Monthly Orders */}
         <div className="chart-container">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Monthly Order Volume</h3>
-          {trendMonths.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={trendMonths}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#94a3b8" />
-                <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" />
-                <Tooltip />
-                <Bar dataKey="order_count" fill="#16a34a" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          {loading ? (
+            <ChartSkeleton />
+          ) : trendMonths.length > 0 ? (
+            <FadeIn>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={trendMonths}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#94a3b8" />
+                  <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" />
+                  <Tooltip />
+                  <Bar dataKey="order_count" fill="#16a34a" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </FadeIn>
           ) : (
-            <div className="h-[280px] flex items-center justify-center text-gray-400 text-sm">No trend data</div>
+            <FadeIn>
+              <div className="h-[280px] flex items-center justify-center text-gray-400 text-sm">No trend data</div>
+            </FadeIn>
           )}
         </div>
 
         {/* Shipping Distribution (Sanitized Unknown labels) */}
         <div className="chart-container">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Shipping Provider Share (Cleaned)</h3>
-          {sanitizedShippingProviders.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie
-                  data={sanitizedShippingProviders}
-                  dataKey="order_count"
-                  nameKey="shipping_provider"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  label={({ payload, percent }: PieLabelArgs) => `${payload?.shipping_provider || ''} ${((percent || 0) * 100).toFixed(0)}%`}
-                >
-                  {sanitizedShippingProviders.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+          {loading ? (
+            <ChartSkeleton />
+          ) : sanitizedShippingProviders.length > 0 ? (
+            <FadeIn>
+              <ResponsiveContainer width="100%" height={280}>
+                <PieChart>
+                  <Pie
+                    data={sanitizedShippingProviders}
+                    dataKey="order_count"
+                    nameKey="shipping_provider"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    label={({ payload, percent }: PieLabelArgs) => `${payload?.shipping_provider || ''} ${((percent || 0) * 100).toFixed(0)}%`}
+                  >
+                    {sanitizedShippingProviders.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </FadeIn>
           ) : (
-            <div className="h-[280px] flex items-center justify-center text-gray-400 text-sm">No shipping data</div>
+            <FadeIn>
+              <div className="h-[280px] flex items-center justify-center text-gray-400 text-sm">No shipping data</div>
+            </FadeIn>
           )}
         </div>
 
