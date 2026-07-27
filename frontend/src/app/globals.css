@@ -33,11 +33,11 @@ body {
 }
 
 .kpi-card {
-  @apply bg-white rounded-xl border border-gray-200 p-5 transition-shadow hover:shadow-md;
+  @apply bg-white rounded-xl border border-gray-200 p-5 transition-shadow hover:shadow-md h-full flex flex-col justify-between;
 }
 
 .kpi-value {
-  @apply text-3xl font-bold text-gray-900 mt-2;
+  @apply text-2xl md:text-3xl xl:text-xl font-bold text-gray-900 mt-2;
 }
 
 .kpi-label {

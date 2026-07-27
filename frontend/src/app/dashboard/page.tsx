@@ -24,23 +24,35 @@ type PieLabelArgs = { payload?: Record<string, unknown>; percent?: number };
 function KpiCard({ title, value, icon: Icon, trend, loading }: {
   title: string;
   value: string;
-  icon: ComponentType<{ className?: string }>;
+  icon?: ComponentType<{ className?: string }>;
   trend?: number;
   loading: boolean;
 }) {
+  const isCurrency = value.startsWith("Rp ");
+  const displayValue = isCurrency ? value.replace("Rp ", "") : value;
+
   return (
     <div className="kpi-card">
-      <div className="flex items-center justify-between">
-        <span className="kpi-label">{title}</span>
-        <div className="p-2 rounded-lg bg-blue-50">
-          <Icon className="w-5 h-5 text-blue-600" />
+      <div>
+        <div className="flex items-start justify-between min-h-[2.5rem]">
+          <span className="kpi-label pr-2 line-clamp-2 min-h-[2.5rem]">{title}</span>
+          {Icon ? (
+            <div className="p-2 rounded-lg bg-blue-50 shrink-0">
+              <Icon className="w-5 h-5 text-blue-600" />
+            </div>
+          ) : (
+            <div className="w-9 h-9 shrink-0" />
+          )}
         </div>
+        {loading ? (
+          <div className="h-8 w-24 bg-gray-200 rounded animate-pulse mt-2" />
+        ) : (
+          <div className="kpi-value break-words">
+            {isCurrency && <span className="text-xl md:text-2xl xl:text-lg text-gray-500 mr-1">Rp</span>}
+            {isCurrency ? <span className="whitespace-nowrap">{displayValue}</span> : value}
+          </div>
+        )}
       </div>
-      {loading ? (
-        <div className="h-8 w-24 bg-gray-200 rounded animate-pulse mt-2" />
-      ) : (
-        <div className="kpi-value">{value}</div>
-      )}
       {trend !== undefined && (
         <div className={`flex items-center gap-1 mt-1 text-xs font-medium ${trend >= 0 ? "text-green-600" : "text-red-600"}`}>
           {trend >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
