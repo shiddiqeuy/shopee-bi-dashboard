@@ -4,18 +4,21 @@ import { useState, useEffect } from "react";
 import { Filter, Calendar, MapPin, Tag, CheckCircle2, RotateCcw, X } from "lucide-react";
 
 interface FilterBarProps {
+  citiesByProvince: Record<string, string[]>;
   onFilterChange: (filters: {
     dateRange: string;
     province: string;
+    city: string;
     category: string;
     status: string;
   }) => void;
 }
 
-export function FilterBar({ onFilterChange }: FilterBarProps) {
+export function FilterBar({ citiesByProvince, onFilterChange }: FilterBarProps) {
   // Main state (applied filters)
   const [dateRange, setDateRange] = useState("Jan 2026 - Jul 2026");
   const [province, setProvince] = useState("All");
+  const [city, setCity] = useState("All");
   const [category, setCategory] = useState("All");
   const [status, setStatus] = useState("All");
 
@@ -34,19 +37,28 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
   // Temporary state for mobile batching
   const [tempDateRange, setTempDateRange] = useState(dateRange);
   const [tempProvince, setTempProvince] = useState(province);
+  const [tempCity, setTempCity] = useState(city);
   const [tempCategory, setTempCategory] = useState(category);
   const [tempStatus, setTempStatus] = useState(status);
 
   // Desktop live apply
-  const handleApply = (newValues: { dateRange?: string; province?: string; category?: string; status?: string }) => {
+  const handleApply = (newValues: { dateRange?: string; province?: string; city?: string; category?: string; status?: string }) => {
     const updated = {
       dateRange: newValues.dateRange !== undefined ? newValues.dateRange : dateRange,
       province: newValues.province !== undefined ? newValues.province : province,
+      city: newValues.city !== undefined ? newValues.city : city,
       category: newValues.category !== undefined ? newValues.category : category,
       status: newValues.status !== undefined ? newValues.status : status,
     };
+
+    if (newValues.province !== undefined && newValues.province !== province) {
+      updated.city = "All";
+      setCity("All");
+    }
+
     if (newValues.dateRange !== undefined) setDateRange(newValues.dateRange);
     if (newValues.province !== undefined) setProvince(newValues.province);
+    if (newValues.city !== undefined && (newValues.province === undefined || newValues.province === province)) setCity(newValues.city);
     if (newValues.category !== undefined) setCategory(newValues.category);
     if (newValues.status !== undefined) setStatus(newValues.status);
 
@@ -57,11 +69,13 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
   const handleReset = () => {
     setDateRange("Jan 2026 - Jul 2026");
     setProvince("All");
+    setCity("All");
     setCategory("All");
     setStatus("All");
     onFilterChange({
       dateRange: "Jan 2026 - Jul 2026",
       province: "All",
+      city: "All",
       category: "All",
       status: "All",
     });
@@ -71,6 +85,7 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
   const openDrawer = () => {
     setTempDateRange(dateRange);
     setTempProvince(province);
+    setTempCity(city);
     setTempCategory(category);
     setTempStatus(status);
     setIsOpen(true);
@@ -81,6 +96,7 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
     const defaults = {
       dateRange: "Jan 2026 - Jul 2026",
       province: "All",
+      city: "All",
       category: "All",
       status: "All",
     };
@@ -88,12 +104,14 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
     // Reset temp state
     setTempDateRange(defaults.dateRange);
     setTempProvince(defaults.province);
+    setTempCity(defaults.city);
     setTempCategory(defaults.category);
     setTempStatus(defaults.status);
     
     // Reset main state
     setDateRange(defaults.dateRange);
     setProvince(defaults.province);
+    setCity(defaults.city);
     setCategory(defaults.category);
     setStatus(defaults.status);
     
@@ -106,16 +124,21 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
   const applyMobileFilters = () => {
     setDateRange(tempDateRange);
     setProvince(tempProvince);
+    setCity(tempCity);
     setCategory(tempCategory);
     setStatus(tempStatus);
     onFilterChange({
       dateRange: tempDateRange,
       province: tempProvince,
+      city: tempCity,
       category: tempCategory,
       status: tempStatus,
     });
     setIsOpen(false);
   };
+
+  const desktopCityOptions = citiesByProvince[province] ?? citiesByProvince["All"] ?? [];
+  const mobileCityOptions = citiesByProvince[tempProvince] ?? citiesByProvince["All"] ?? [];
 
   return (
     <>
@@ -146,7 +169,7 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
         </div>
 
         {/* Desktop View: Grid (hidden on mobile) */}
-        <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Date Range */}
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center gap-1">
@@ -184,6 +207,26 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
               <option value="Jawa Tengah">Jawa Tengah</option>
               <option value="Sumatera Utara">Sumatera Utara</option>
               <option value="Banten">Banten</option>
+            </select>
+          </div>
+
+          {/* City */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5 text-gray-400" />
+              City
+            </label>
+            <select
+              value={city}
+              onChange={(e) => handleApply({ city: e.target.value })}
+              className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="All">All Cities</option>
+              {desktopCityOptions.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -292,7 +335,10 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
                 </label>
                 <select
                   value={tempProvince}
-                  onChange={(e) => setTempProvince(e.target.value)}
+                  onChange={(e) => {
+                    setTempProvince(e.target.value);
+                    setTempCity("All");
+                  }}
                   className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="All">All Provinces</option>
@@ -302,6 +348,26 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
                   <option value="Jawa Tengah">Jawa Tengah</option>
                   <option value="Sumatera Utara">Sumatera Utara</option>
                   <option value="Banten">Banten</option>
+                </select>
+              </div>
+
+              {/* City */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                  City
+                </label>
+                <select
+                  value={tempCity}
+                  onChange={(e) => setTempCity(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="All">All Cities</option>
+                  {mobileCityOptions.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
                 </select>
               </div>
 

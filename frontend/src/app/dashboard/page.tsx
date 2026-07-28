@@ -90,13 +90,14 @@ function getArray(section: Record<string, unknown>, key: string): RawRow[] {
   return Array.isArray(value) ? value as RawRow[] : [];
 }
 
-function buildFilteredAnalytics(analytics: unknown, filters: { dateRange: string; province: string; category: string; status: string }): AnalyticsPayload | null {
+function buildFilteredAnalytics(analytics: unknown, filters: { dateRange: string; province: string; city: string; category: string; status: string }): AnalyticsPayload | null {
   const payload = analytics && typeof analytics === "object" ? analytics as AnalyticsPayload : null;
   if (!payload) return null;
   const rows = (payload.raw_data || []).filter((row) => {
     const productName = String(row.product_name ?? "").toLowerCase();
     return dateInRange(row.order_date, filters.dateRange)
       && (filters.province === "All" || row.province === filters.province)
+      && (filters.city === "All" || row.city === filters.city)
       && (filters.category === "All" || productName.includes(filters.category.toLowerCase()))
       && statusMatches(row.order_status, filters.status);
   });
@@ -163,6 +164,7 @@ export default function DashboardPage() {
   const [filters, setFilters] = useState({
     dateRange: "Jan 2026 - Jul 2026",
     province: "All",
+    city: "All",
     category: "All",
     status: "All",
   });
@@ -195,6 +197,33 @@ export default function DashboardPage() {
     }));
   }, [shipping]);
 
+  const citiesByProvince = useMemo(() => {
+    const payload = analytics && typeof analytics === "object" ? analytics as AnalyticsPayload : null;
+    const map: Record<string, Set<string>> = { All: new Set<string>() };
+    
+    if (!payload || !payload.raw_data) return { All: [] };
+    
+    for (const row of payload.raw_data) {
+      const p = String(row.province || "Unknown").trim();
+      const c = String(row.city || "").trim();
+      
+      if (!c || c.toLowerCase().includes("unknown")) {
+        continue;
+      }
+      
+      if (!map[p]) map[p] = new Set<string>();
+      map[p].add(c);
+      map["All"].add(c);
+    }
+    
+    const result: Record<string, string[]> = {};
+    for (const key in map) {
+      result[key] = Array.from(map[key]).sort((a, b) => a.localeCompare(b));
+    }
+    
+    return result;
+  }, [analytics]);
+
   const noData = ready && !analytics;
 
   if (noData) {
@@ -210,7 +239,7 @@ export default function DashboardPage() {
   return (
     <div>
       {/* Filter Bar */}
-      <FilterBar onFilterChange={(newFilters) => setFilters(newFilters)} />
+      <FilterBar citiesByProvince={citiesByProvince} onFilterChange={(newFilters) => setFilters(newFilters)} />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
