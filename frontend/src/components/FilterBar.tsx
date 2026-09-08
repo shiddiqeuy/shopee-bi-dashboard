@@ -199,10 +199,10 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
               className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="All">All Categories</option>
-              <option value="Horeca & Beverage">Horeca & Beverage Ingredients</option>
+              <option value="Horeca & Beverage Ingredients">Horeca & Beverage Ingredients</option>
               <option value="Dairy & Creamer">Dairy & Creamer</option>
               <option value="Syrups & Sweeteners">Syrups & Sweeteners</option>
-              <option value="Packaging & Supp">Packaging & Supplies</option>
+              <option value="Packaging & Supplies">Packaging & Supplies</option>
             </select>
           </div>
 
@@ -317,10 +317,10 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
                   className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="All">All Categories</option>
-                  <option value="Horeca & Beverage">Horeca & Beverage Ingredients</option>
+                  <option value="Horeca & Beverage Ingredients">Horeca & Beverage Ingredients</option>
                   <option value="Dairy & Creamer">Dairy & Creamer</option>
                   <option value="Syrups & Sweeteners">Syrups & Sweeteners</option>
-                  <option value="Packaging & Supp">Packaging & Supplies</option>
+                  <option value="Packaging & Supplies">Packaging & Supplies</option>
                 </select>
               </div>
 
