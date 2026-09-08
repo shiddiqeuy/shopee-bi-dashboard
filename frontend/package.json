@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:filter": "node --test test/filter-category-options.test.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.25.0",
